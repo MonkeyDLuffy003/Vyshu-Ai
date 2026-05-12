@@ -10,35 +10,22 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # ── Networking ──────────────────────────────────────────────
   http: ^1.2.0
   connectivity_plus: ^6.0.1
-
-  # ── Storage ─────────────────────────────────────────────────
   shared_preferences: ^2.2.2
   path_provider: ^2.1.2
-
-  # ── UI + Fonts ───────────────────────────────────────────────
   google_fonts: ^6.2.1
   flutter_animate: ^4.5.0
   cached_network_image: ^3.3.1
-
-  # ── Mobile Controls ──────────────────────────────────────────
   permission_handler: ^11.3.0
   torch_light: ^1.0.2
   volume_controller: ^2.0.7
   screen_brightness: ^0.2.2+1
   url_launcher: ^6.2.5
   android_intent_plus: ^4.0.0
-
-  # ── PDF ──────────────────────────────────────────────────────
   pdf: ^3.10.8
   printing: ^5.12.0
-
-  # ── Email ────────────────────────────────────────────────────
   mailer: ^6.1.0
-
-  # ── Utilities ────────────────────────────────────────────────
   intl: ^0.19.0
   image_picker: ^1.0.7
 
@@ -47,15 +34,6 @@ flutter:
 
   assets:
     - assets/rooms/
-    - assets/fonts/
     - assets/vyshu/office/
     - assets/vyshu/home/
     - assets/vyshu/adaptive/
-
-  fonts:
-    - family: Orbitron
-      fonts:
-        - asset: assets/fonts/Orbitron-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Orbitron-Regular.ttf
-          weight: 400
