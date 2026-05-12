@@ -338,8 +338,8 @@ class _ControlScreenState extends State<ControlScreen> {
 
   Future<void> _toggleVolume() async {
     _volMax
-        ? await VolumeController().setVolume(0.5)
-        : await VolumeController().setVolume(1.0);
+        ? VolumeController().setVolume(0.5)
+        : VolumeController().setVolume(1.0);
     setState(() => _volMax = !_volMax);
   }
 
