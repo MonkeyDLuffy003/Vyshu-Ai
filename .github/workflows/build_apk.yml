@@ -30,13 +30,18 @@ jobs:
         run: |
           flutter create --org com.tejaapps --project-name vyshu_ai /tmp/vyshu_fresh
           rm -rf /tmp/vyshu_fresh/lib
-          rm -rf /tmp/vyshu_fresh/android
           cp -r lib /tmp/vyshu_fresh/
-          cp -r android /tmp/vyshu_fresh/
           cp pubspec.yaml /tmp/vyshu_fresh/
+          cp android/app/build.gradle /tmp/vyshu_fresh/android/app/
+          cp android/app/src/main/AndroidManifest.xml /tmp/vyshu_fresh/android/app/src/main/
+          cp android/app/src/main/res/values/styles.xml /tmp/vyshu_fresh/android/app/src/main/res/values/
+          mkdir -p /tmp/vyshu_fresh/android/app/src/main/kotlin/com/tejaapps/vyshuai
+          cp android/app/src/main/kotlin/com/tejaapps/vyshuai/MainActivity.kt /tmp/vyshu_fresh/android/app/src/main/kotlin/com/tejaapps/vyshuai/
           mkdir -p /tmp/vyshu_fresh/assets/rooms
           mkdir -p /tmp/vyshu_fresh/assets/fonts
-          mkdir -p /tmp/vyshu_fresh/assets/vyshu/{office,home,adaptive}
+          mkdir -p /tmp/vyshu_fresh/assets/vyshu/office
+          mkdir -p /tmp/vyshu_fresh/assets/vyshu/home
+          mkdir -p /tmp/vyshu_fresh/assets/vyshu/adaptive
           find /tmp/vyshu_fresh/assets -type d -exec touch {}/.keep \;
 
       - name: Flutter pub get
