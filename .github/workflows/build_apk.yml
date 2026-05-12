@@ -29,20 +29,15 @@ jobs:
       - name: Build fresh Flutter project
         run: |
           flutter create --org com.tejaapps --project-name vyshu_ai /tmp/vyshu_fresh
+          rm -rf /tmp/vyshu_fresh/lib
+          rm -rf /tmp/vyshu_fresh/android
           cp -r lib /tmp/vyshu_fresh/
+          cp -r android /tmp/vyshu_fresh/
           cp pubspec.yaml /tmp/vyshu_fresh/
-          cp -r android/app/src /tmp/vyshu_fresh/android/app/
-          cp android/app/build.gradle /tmp/vyshu_fresh/android/app/
           mkdir -p /tmp/vyshu_fresh/assets/rooms
           mkdir -p /tmp/vyshu_fresh/assets/fonts
-          mkdir -p /tmp/vyshu_fresh/assets/vyshu/office
-          mkdir -p /tmp/vyshu_fresh/assets/vyshu/home
-          mkdir -p /tmp/vyshu_fresh/assets/vyshu/adaptive
-          touch /tmp/vyshu_fresh/assets/rooms/.keep
-          touch /tmp/vyshu_fresh/assets/fonts/.keep
-          touch /tmp/vyshu_fresh/assets/vyshu/office/.keep
-          touch /tmp/vyshu_fresh/assets/vyshu/home/.keep
-          touch /tmp/vyshu_fresh/assets/vyshu/adaptive/.keep
+          mkdir -p /tmp/vyshu_fresh/assets/vyshu/{office,home,adaptive}
+          find /tmp/vyshu_fresh/assets -type d -exec touch {}/.keep \;
 
       - name: Flutter pub get
         working-directory: /tmp/vyshu_fresh
@@ -56,7 +51,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vyshu-ai-v4-apk
-          path: /tmp/vyshu_fresh/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          path: /tmp/vyshu_fresh/build/app/outputs/flutter-apk/app-*-release.apk
           retention-days: 30
 
       - name: Done
