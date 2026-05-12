@@ -1,66 +1,47 @@
 name: Vyshu AI V4 Build APK
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 jobs:
   build:
-    name: Build Flutter APK
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.22.0"
           channel: stable
           cache: true
-
-      - name: Build fresh Flutter project
+      - name: Setup project
         run: |
-          flutter create --org com.tejaapps --project-name vyshu_ai /tmp/vyshu_fresh
-          rm -rf /tmp/vyshu_fresh/lib
-          cp -r lib /tmp/vyshu_fresh/
-          cp pubspec.yaml /tmp/vyshu_fresh/
-          cp android/app/src/main/AndroidManifest.xml /tmp/vyshu_fresh/android/app/src/main/
-          cp android/app/src/main/res/values/styles.xml /tmp/vyshu_fresh/android/app/src/main/res/values/
-          mkdir -p /tmp/vyshu_fresh/android/app/src/main/kotlin/com/tejaapps/vyshuai
-          cp android/app/src/main/kotlin/com/tejaapps/vyshuai/MainActivity.kt /tmp/vyshu_fresh/android/app/src/main/kotlin/com/tejaapps/vyshuai/
-          mkdir -p /tmp/vyshu_fresh/assets/rooms
-          mkdir -p /tmp/vyshu_fresh/assets/fonts
-          mkdir -p /tmp/vyshu_fresh/assets/vyshu/office
-          mkdir -p /tmp/vyshu_fresh/assets/vyshu/home
-          mkdir -p /tmp/vyshu_fresh/assets/vyshu/adaptive
-          find /tmp/vyshu_fresh/assets -type d -exec touch {}/.keep \;
-
-      - name: Flutter pub get
-        working-directory: /tmp/vyshu_fresh
+          flutter create --org com.tejaapps --project-name vyshu_ai /tmp/vf
+          rm -rf /tmp/vf/lib
+          cp -r lib /tmp/vf/
+          cp pubspec.yaml /tmp/vf/
+          cp android/app/src/main/AndroidManifest.xml /tmp/vf/android/app/src/main/
+          cp android/app/src/main/res/values/styles.xml /tmp/vf/android/app/src/main/res/values/
+          mkdir -p /tmp/vf/android/app/src/main/kotlin/com/tejaapps/vyshuai
+          cp android/app/src/main/kotlin/com/tejaapps/vyshuai/MainActivity.kt /tmp/vf/android/app/src/main/kotlin/com/tejaapps/vyshuai/
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' /tmp/vf/android/app/build.gradle
+          sed -i 's/minSdk flutter.minSdkVersion/minSdk 23/' /tmp/vf/android/app/build.gradle
+          mkdir -p /tmp/vf/assets/rooms
+          mkdir -p /tmp/vf/assets/vyshu/office
+          mkdir -p /tmp/vf/assets/vyshu/home
+          mkdir -p /tmp/vf/assets/vyshu/adaptive
+          find /tmp/vf/assets -type d -exec touch {}/.keep \;
+      - name: pub get
+        working-directory: /tmp/vf
         run: flutter pub get
-
-      - name: Build APK
-        working-directory: /tmp/vyshu_fresh
+      - name: build apk
+        working-directory: /tmp/vf
         run: flutter build apk --release --split-per-abi
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: vyshu-ai-v4-apk
-          path: /tmp/vyshu_fresh/build/app/outputs/flutter-apk/app-*-release.apk
+          path: /tmp/vf/build/app/outputs/flutter-apk/app-*-release.apk
           retention-days: 30
-
-      - name: Done
-        run: |
-          echo "================================"
-          echo "  VYSHU AI V4 APK BUILD DONE"
-          echo "================================"
-          ls -lh /tmp/vyshu_fresh/build/app/outputs/flutter-apk/*.apk
