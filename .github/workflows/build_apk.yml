@@ -32,7 +32,6 @@ jobs:
           rm -rf /tmp/vyshu_fresh/lib
           cp -r lib /tmp/vyshu_fresh/
           cp pubspec.yaml /tmp/vyshu_fresh/
-          cp android/app/build.gradle /tmp/vyshu_fresh/android/app/
           cp android/app/src/main/AndroidManifest.xml /tmp/vyshu_fresh/android/app/src/main/
           cp android/app/src/main/res/values/styles.xml /tmp/vyshu_fresh/android/app/src/main/res/values/
           mkdir -p /tmp/vyshu_fresh/android/app/src/main/kotlin/com/tejaapps/vyshuai
