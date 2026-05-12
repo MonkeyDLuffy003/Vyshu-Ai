@@ -10,38 +10,37 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # ── Networking ───────────────────────────────────────────────
-  http: ^1.2.0                    # API calls (Gemini, Groq, Together)
-  connectivity_plus: ^6.0.1      # Internet check before API calls
+  # ── Networking ──────────────────────────────────────────────
+  http: ^1.2.0
+  connectivity_plus: ^6.0.1
 
-  # ── Storage ──────────────────────────────────────────────────
-  shared_preferences: ^2.2.2     # API keys + settings storage
-  path_provider: ^2.1.2          # File paths (memory JSON)
+  # ── Storage ─────────────────────────────────────────────────
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.2
 
   # ── UI + Fonts ───────────────────────────────────────────────
-  google_fonts: ^6.2.1           # Orbitron (header) + Inter (body)
-  flutter_animate: ^4.5.0        # Smooth animations
-  cached_network_image: ^3.3.1   # Cache room background images
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.0
+  cached_network_image: ^3.3.1
 
   # ── Mobile Controls ──────────────────────────────────────────
-  permission_handler: ^11.3.0    # Permissions at runtime
-  torch_light: ^1.0.2            # Torch / Flashlight
-  volume_controller: ^2.0.7      # Volume control
-  screen_brightness: ^0.2.2+1    # Brightness control
-  url_launcher: ^6.2.5           # Open Spotify, YouTube, apps
-  android_intent_plus: ^1.0.3    # WiFi, Hotspot, BT settings
+  permission_handler: ^11.3.0
+  torch_light: ^1.0.2
+  volume_controller: ^2.0.7
+  screen_brightness: ^0.2.2+1
+  url_launcher: ^6.2.5
+  android_intent_plus: ^6.0.0
 
-  # ── PDF + Resume ─────────────────────────────────────────────
-  pdf: ^3.10.8                   # PDF generation
-  printing: ^5.12.0              # Preview + share PDF
+  # ── PDF ──────────────────────────────────────────────────────
+  pdf: ^3.10.8
+  printing: ^5.12.0
 
-  # ── Email (Gmail archive) ────────────────────────────────────
-  mailer: ^6.1.0                 # SMTP Gmail archive
+  # ── Email ────────────────────────────────────────────────────
+  mailer: ^6.1.0
 
   # ── Utilities ────────────────────────────────────────────────
-  intl: ^0.19.0                  # Date/time formatting
-  flutter_svg: ^2.0.9            # SVG assets
-  image_picker: ^1.0.7           # Pick image for profile/logo
+  intl: ^0.19.0
+  image_picker: ^1.0.7
 
 flutter:
   uses-material-design: true
@@ -49,6 +48,9 @@ flutter:
   assets:
     - assets/rooms/
     - assets/fonts/
+    - assets/vyshu/office/
+    - assets/vyshu/home/
+    - assets/vyshu/adaptive/
 
   fonts:
     - family: Orbitron
