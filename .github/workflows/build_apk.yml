@@ -27,8 +27,11 @@ jobs:
           cp android/app/src/main/res/values/styles.xml /tmp/vf/android/app/src/main/res/values/
           mkdir -p /tmp/vf/android/app/src/main/kotlin/com/tejaapps/vyshuai
           cp android/app/src/main/kotlin/com/tejaapps/vyshuai/MainActivity.kt /tmp/vf/android/app/src/main/kotlin/com/tejaapps/vyshuai/
+          echo "=== BEFORE FIX ===" && grep -n "minSdk" /tmp/vf/android/app/build.gradle
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' /tmp/vf/android/app/build.gradle
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' /tmp/vf/android/app/build.gradle
           sed -i 's/minSdk flutter.minSdkVersion/minSdk 23/' /tmp/vf/android/app/build.gradle
+          echo "=== AFTER FIX ===" && grep -n "minSdk" /tmp/vf/android/app/build.gradle
           mkdir -p /tmp/vf/assets/rooms
           mkdir -p /tmp/vf/assets/vyshu/office
           mkdir -p /tmp/vf/assets/vyshu/home
