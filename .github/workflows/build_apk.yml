@@ -33,6 +33,8 @@ jobs:
           sed -i 's/minSdk flutter.minSdkVersion/minSdk 23/' /tmp/vf/android/app/build.gradle
           echo "=== AFTER FIX ===" && grep -n "minSdk" /tmp/vf/android/app/build.gradle
           mkdir -p /tmp/vf/assets/rooms
+          cp assets/vyshu_logo.png /tmp/vf/assets/
+          cp assets/vyshu/office/outfit_1.png /tmp/vf/assets/vyshu/office/
           mkdir -p /tmp/vf/assets/vyshu/office
           mkdir -p /tmp/vf/assets/vyshu/home
           mkdir -p /tmp/vf/assets/vyshu/adaptive
