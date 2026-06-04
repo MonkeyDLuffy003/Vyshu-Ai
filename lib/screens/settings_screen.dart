@@ -15,10 +15,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _adaptiveRoom = "park";
   bool   _voiceEnabled = true;
 
+  // ── FIX: controllers live in state, not rebuilt on every frame ──
+  final Map<String, TextEditingController> _controllers = {};
+
+  final List<_KeyField> _keyFields = [
+    _KeyField("Gemini Key 1",  VyshuConfig.kGeminiKey1),
+    _KeyField("Gemini Key 2",  VyshuConfig.kGeminiKey2),
+    _KeyField("Gemini Key 3",  VyshuConfig.kGeminiKey3),
+    _KeyField("Groq API Key",  VyshuConfig.kGroqKey),
+    _KeyField("Together AI",   VyshuConfig.kTogetherKey),
+    _KeyField("Tavily Search", VyshuConfig.kTavilyKey),
+    _KeyField("Gmail Address", VyshuConfig.kGmailAddress,
+        hint: "yourname@gmail.com"),
+    _KeyField("App Password",  VyshuConfig.kGmailAppPwd,
+        hint: "xxxx xxxx xxxx xxxx", obscure: true),
+  ];
+
   @override
   void initState() {
     super.initState();
+    // Create controllers first, then populate from prefs
+    for (final f in _keyFields) {
+      _controllers[f.prefKey] = TextEditingController();
+    }
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    // Dispose all controllers to avoid memory leaks
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
@@ -27,6 +56,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _mode         = prefs.getString(VyshuConfig.kCurrentMode)  ?? "HOME";
       _adaptiveRoom = prefs.getString(VyshuConfig.kAdaptiveRoom) ?? "park";
       _voiceEnabled = prefs.getBool(VyshuConfig.kVoiceEnabled)   ?? true;
+
+      // Populate text controllers with stored values
+      for (final f in _keyFields) {
+        _controllers[f.prefKey]!.text =
+            prefs.getString(f.prefKey) ?? "";
+      }
     });
   }
 
@@ -34,6 +69,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (val is String) await prefs.setString(key, val);
     if (val is bool)   await prefs.setBool(key, val);
+  }
+
+  Future<void> _saveKey(String prefKey, String label) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(prefKey, _controllers[prefKey]!.text.trim());
+    _showSnack("$label saved!");
   }
 
   @override
@@ -69,23 +110,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               _buildSection("API Keys",
                   Icons.key_rounded, [
-                _buildKeyField("Gemini Key 1", VyshuConfig.kGeminiKey1),
-                _buildKeyField("Gemini Key 2", VyshuConfig.kGeminiKey2),
-                _buildKeyField("Gemini Key 3", VyshuConfig.kGeminiKey3),
-                _buildKeyField("Groq API Key", VyshuConfig.kGroqKey),
-                _buildKeyField("Together AI",  VyshuConfig.kTogetherKey),
-                _buildKeyField("Tavily Search", VyshuConfig.kTavilyKey),
+                ..._keyFields
+                    .where((f) => f.prefKey != VyshuConfig.kGmailAddress &&
+                                  f.prefKey != VyshuConfig.kGmailAppPwd)
+                    .map((f) => _buildKeyField(f)),
               ]),
               const SizedBox(height: 16),
               _buildSection("Gmail Archive",
                   Icons.email_outlined, [
-                _buildKeyField("Gmail Address",
-                    VyshuConfig.kGmailAddress,
-                    hint: "yourname@gmail.com"),
-                _buildKeyField("App Password",
-                    VyshuConfig.kGmailAppPwd,
-                    hint: "xxxx xxxx xxxx xxxx",
-                    obscure: true),
+                ..._keyFields
+                    .where((f) => f.prefKey == VyshuConfig.kGmailAddress ||
+                                  f.prefKey == VyshuConfig.kGmailAppPwd)
+                    .map((f) => _buildKeyField(f)),
                 const SizedBox(height: 8),
                 _buildArchiveButton(),
               ]),
@@ -113,9 +149,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       const SizedBox(width: 10),
       Text("SETTINGS",
           style: GoogleFonts.orbitron(
-            color:      const Color(0xFF00B4FF),
-            fontSize:   16,
-            fontWeight: FontWeight.w700,
+            color:         const Color(0xFF00B4FF),
+            fontSize:      16,
+            fontWeight:    FontWeight.w700,
             letterSpacing: 2,
           )),
     ]);
@@ -136,8 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Icon(icon,
-                color: const Color(0xFF00FFFF), size: 16),
+            Icon(icon, color: const Color(0xFF00FFFF), size: 16),
             const SizedBox(width: 8),
             Text(title,
                 style: GoogleFonts.inter(
@@ -154,7 +189,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildModeSelector() {
-    final modes = ["HOME","OFFICE","ADAPTIVE"];
+    final modes = ["HOME", "OFFICE", "ADAPTIVE"];
     final icons = [
       Icons.home_rounded,
       Icons.work_rounded,
@@ -171,7 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
+              margin:  const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: selected
@@ -180,8 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(children: [
-                Icon(icons[i],
-                    color: Colors.white, size: 20),
+                Icon(icons[i], color: Colors.white, size: 20),
                 const SizedBox(height: 4),
                 Text(modes[i],
                     style: GoogleFonts.orbitron(
@@ -203,8 +237,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         Text("Choose Adaptive Room:",
             style: GoogleFonts.inter(
-                color:    const Color(0xFF7EC8E3),
-                fontSize: 12)),
+                color: const Color(0xFF7EC8E3), fontSize: 12)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8, runSpacing: 8,
@@ -246,16 +279,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildWardrobeGrid() {
     final outfits = [
-      {"label":"Office 1",    "icon":Icons.work_rounded},
-      {"label":"Office 2",    "icon":Icons.work_outline},
-      {"label":"Office 3",    "icon":Icons.business_center_outlined},
-      {"label":"Home 1",      "icon":Icons.home_rounded},
-      {"label":"Home 2",      "icon":Icons.favorite_outline},
-      {"label":"Night",       "icon":Icons.nights_stay_rounded},
+      {"label": "Office 1", "icon": Icons.work_rounded},
+      {"label": "Office 2", "icon": Icons.work_outline},
+      {"label": "Office 3", "icon": Icons.business_center_outlined},
+      {"label": "Home 1",   "icon": Icons.home_rounded},
+      {"label": "Home 2",   "icon": Icons.favorite_outline},
+      {"label": "Night",    "icon": Icons.nights_stay_rounded},
     ];
     return GridView.count(
       crossAxisCount: 3,
-      shrinkWrap:     true,
+      shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing:  8,
       crossAxisSpacing: 8,
@@ -285,68 +318,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildKeyField(String label, String prefKey,
-      {String hint = "Enter key...", bool obscure = false}) {
-    return FutureBuilder<SharedPreferences>(
-      future: SharedPreferences.getInstance(),
-      builder: (_, snap) {
-        if (!snap.hasData) return const SizedBox.shrink();
-        final prefs      = snap.data!;
-        final controller = TextEditingController(
-            text: prefs.getString(prefKey) ?? "");
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: GoogleFonts.inter(
-                    color:    const Color(0xFF7EC8E3),
-                    fontSize: 11,
-                  )),
-              const SizedBox(height: 4),
-              Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller:  controller,
-                    obscureText: obscure,
-                    style: GoogleFonts.inter(
-                        color: Colors.white, fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText:  hint,
-                      hintStyle: GoogleFonts.inter(
-                        color:    const Color(0xFF3A5A7A),
-                        fontSize: 12,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      isDense: true,
-                    ),
+  // ── FIX: uses persistent controller from state map ──
+  Widget _buildKeyField(_KeyField field) {
+    final controller = _controllers[field.prefKey]!;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(field.label,
+              style: GoogleFonts.inter(
+                color:    const Color(0xFF7EC8E3),
+                fontSize: 11,
+              )),
+          const SizedBox(height: 4),
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller:  controller,
+                obscureText: field.obscure,
+                style: GoogleFonts.inter(
+                    color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText:  field.hint,
+                  hintStyle: GoogleFonts.inter(
+                    color:    const Color(0xFF3A5A7A),
+                    fontSize: 12,
                   ),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  isDense: true,
                 ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () async {
-                    await prefs.setString(
-                        prefKey, controller.text.trim());
-                    _showSnack("$label saved!");
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color:        const Color(0xFF00B4FF),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.check_rounded,
-                        color: Colors.white, size: 16),
-                  ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => _saveKey(field.prefKey, field.label),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color:        const Color(0xFF00B4FF),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ]),
-            ],
-          ),
-        );
-      },
+                child: const Icon(Icons.check_rounded,
+                    color: Colors.white, size: 16),
+              ),
+            ),
+          ]),
+        ],
+      ),
     );
   }
 
@@ -411,4 +432,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       duration:  const Duration(seconds: 2),
     ));
   }
+}
+
+// ── Helper data class ──
+class _KeyField {
+  final String label;
+  final String prefKey;
+  final String hint;
+  final bool   obscure;
+
+  const _KeyField(this.label, this.prefKey,
+      {this.hint = "Enter key...", this.obscure = false});
 }
