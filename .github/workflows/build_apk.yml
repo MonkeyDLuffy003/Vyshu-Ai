@@ -17,34 +17,52 @@ jobs:
           flutter-version: "3.22.0"
           channel: stable
           cache: true
+
       - name: Setup project
         run: |
           flutter create --org com.tejaapps --project-name vyshu_ai /tmp/vf
           rm -rf /tmp/vf/lib
-          cp -r lib /tmp/vf/
-          cp pubspec.yaml /tmp/vf/
-          cp android/app/src/main/AndroidManifest.xml /tmp/vf/android/app/src/main/
-          cp android/app/src/main/res/values/styles.xml /tmp/vf/android/app/src/main/res/values/
-          mkdir -p /tmp/vf/android/app/src/main/kotlin/com/tejaapps/vyshuai
-          cp android/app/src/main/kotlin/com/tejaapps/vyshuai/MainActivity.kt /tmp/vf/android/app/src/main/kotlin/com/tejaapps/vyshuai/
-          echo "=== BEFORE FIX ===" && grep -n "minSdk" /tmp/vf/android/app/build.gradle
-          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' /tmp/vf/android/app/build.gradle
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' /tmp/vf/android/app/build.gradle
-          sed -i 's/minSdk flutter.minSdkVersion/minSdk 23/' /tmp/vf/android/app/build.gradle
-          echo "=== AFTER FIX ===" && grep -n "minSdk" /tmp/vf/android/app/build.gradle
-          mkdir -p /tmp/vf/assets/rooms
-          cp assets/vyshu_logo.png /tmp/vf/assets/
-          cp assets/vyshu/office/outfit_1.png /tmp/vf/assets/vyshu/office/
+
+          # ── 1. ALL directories first ──────────────────────────────
           mkdir -p /tmp/vf/assets/vyshu/office
           mkdir -p /tmp/vf/assets/vyshu/home
           mkdir -p /tmp/vf/assets/vyshu/adaptive
+          mkdir -p /tmp/vf/assets/rooms
+          mkdir -p /tmp/vf/android/app/src/main/kotlin/com/tejaapps/vyshuai
+
+          # ── 2. Copy lib + config ──────────────────────────────────
+          cp -r lib /tmp/vf/
+          cp pubspec.yaml /tmp/vf/
+
+          # ── 3. Copy assets ────────────────────────────────────────
+          cp assets/vyshu_logo.png /tmp/vf/assets/
+          cp assets/vyshu/office/outfit_1.png /tmp/vf/assets/vyshu/office/
+
+          # ── 4. Copy Android files ─────────────────────────────────
+          cp android/app/src/main/AndroidManifest.xml \
+             /tmp/vf/android/app/src/main/
+          cp android/app/src/main/res/values/styles.xml \
+             /tmp/vf/android/app/src/main/res/values/
+          cp android/app/src/main/kotlin/com/tejaapps/vyshuai/MainActivity.kt \
+             /tmp/vf/android/app/src/main/kotlin/com/tejaapps/vyshuai/
+
+          # ── 5. minSdk fix ─────────────────────────────────────────
+          echo "=== BEFORE ===" && grep -n "minSdk" /tmp/vf/android/app/build.gradle
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' /tmp/vf/android/app/build.gradle
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' /tmp/vf/android/app/build.gradle
+          sed -i 's/minSdk flutter.minSdkVersion/minSdk 23/' /tmp/vf/android/app/build.gradle
+          echo "=== AFTER ===" && grep -n "minSdk" /tmp/vf/android/app/build.gradle
+
           find /tmp/vf/assets -type d -exec touch {}/.keep \;
+
       - name: pub get
         working-directory: /tmp/vf
         run: flutter pub get
+
       - name: build apk
         working-directory: /tmp/vf
         run: flutter build apk --release --split-per-abi
+
       - uses: actions/upload-artifact@v4
         with:
           name: vyshu-ai-v4-apk
