@@ -1,446 +1,418 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../brain/config.dart';
-import '../brain/memory_service.dart';
+import flet as ft
+from flet import (
+    Page, Column, Row, Container, Text, TextField, Icon, ElevatedButton,
+    OutlinedButton, GestureDetector, GridView, Switch, SnackBar,
+    CrossAxisAlignment, MainAxisAlignment, BorderRadius, EdgeInsets,
+    LinearGradient, Alignment, Colors, Icons, IconButton
+)
+import asyncio
 
-class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
+# Simulated MemoryService (replace with your actual logic)
+class MemoryService:
+    @staticmethod
+    async def archive_to_gmail():
+        await asyncio.sleep(1)  # Simulate network
+        return "Archived 5 expired memories to Gmail"
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  String _mode         = "HOME";
-  String _adaptiveRoom = "park";
-  bool   _voiceEnabled = true;
+# Config keys (same as VyshuConfig)
+class VyshuConfig:
+    kGeminiKey1 = "gemini_key_1"
+    kGeminiKey2 = "gemini_key_2"
+    kGeminiKey3 = "gemini_key_3"
+    kGroqKey = "groq_key"
+    kTogetherKey = "together_key"
+    kTavilyKey = "tavily_key"
+    kGmailAddress = "gmail_address"
+    kGmailAppPwd = "gmail_app_password"
+    kCurrentMode = "current_mode"
+    kAdaptiveRoom = "adaptive_room"
+    kVoiceEnabled = "voice_enabled"
 
-  // ── FIX: controllers live in state, not rebuilt on every frame ──
-  final Map<String, TextEditingController> _controllers = {};
-
-  final List<_KeyField> _keyFields = [
-    _KeyField("Gemini Key 1",  VyshuConfig.kGeminiKey1),
-    _KeyField("Gemini Key 2",  VyshuConfig.kGeminiKey2),
-    _KeyField("Gemini Key 3",  VyshuConfig.kGeminiKey3),
-    _KeyField("Groq API Key",  VyshuConfig.kGroqKey),
-    _KeyField("Together AI",   VyshuConfig.kTogetherKey),
-    _KeyField("Tavily Search", VyshuConfig.kTavilyKey),
-    _KeyField("Gmail Address", VyshuConfig.kGmailAddress,
-        hint: "yourname@gmail.com"),
-    _KeyField("App Password",  VyshuConfig.kGmailAppPwd,
-        hint: "xxxx xxxx xxxx xxxx", obscure: true),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    // Create controllers first, then populate from prefs
-    for (final f in _keyFields) {
-      _controllers[f.prefKey] = TextEditingController();
+    adaptive_rooms = ["park", "cafe", "library", "beach", "mountain"]
+    room_emojis = {
+        "park": "🌳", "cafe": "☕", "library": "📚",
+        "beach": "🏖️", "mountain": "⛰️"
     }
-    _loadSettings();
-  }
 
-  @override
-  void dispose() {
-    // Dispose all controllers to avoid memory leaks
-    for (final c in _controllers.values) {
-      c.dispose();
-    }
-    super.dispose();
-  }
+class KeyField:
+    def __init__(self, label, pref_key, hint="Enter key...", obscure=False):
+        self.label = label
+        self.pref_key = pref_key
+        self.hint = hint
+        self.obscure = obscure
 
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _mode         = prefs.getString(VyshuConfig.kCurrentMode)  ?? "HOME";
-      _adaptiveRoom = prefs.getString(VyshuConfig.kAdaptiveRoom) ?? "park";
-      _voiceEnabled = prefs.getBool(VyshuConfig.kVoiceEnabled)   ?? true;
+class SettingsScreen:
+    def __init__(self, page: Page):
+        self.page = page
+        self.page.title = "Settings"
+        self.page.theme_mode = ft.ThemeMode.DARK
+        self.page.bgcolor = None  # use gradient on container
 
-      // Populate text controllers with stored values
-      for (final f in _keyFields) {
-        _controllers[f.prefKey]!.text =
-            prefs.getString(f.prefKey) ?? "";
-      }
-    });
-  }
+        self.mode = "HOME"
+        self.adaptive_room = "park"
+        self.voice_enabled = True
 
-  Future<void> _savePref(String key, dynamic val) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (val is String) await prefs.setString(key, val);
-    if (val is bool)   await prefs.setBool(key, val);
-  }
+        # Controllers and status for API keys
+        self.controllers = {}
+        self.save_status = {}  # True = saved, False = error, None = idle
 
-  Future<void> _saveKey(String prefKey, String label) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(prefKey, _controllers[prefKey]!.text.trim());
-    _showSnack("$label saved!");
-  }
+        self.key_fields = [
+            KeyField("Gemini Key 1", VyshuConfig.kGeminiKey1),
+            KeyField("Gemini Key 2", VyshuConfig.kGeminiKey2),
+            KeyField("Gemini Key 3", VyshuConfig.kGeminiKey3),
+            KeyField("Groq API Key", VyshuConfig.kGroqKey),
+            KeyField("Together AI", VyshuConfig.kTogetherKey),
+            KeyField("Tavily Search", VyshuConfig.kTavilyKey),
+            KeyField("Gmail Address", VyshuConfig.kGmailAddress,
+                     hint="yourname@gmail.com"),
+            KeyField("App Password", VyshuConfig.kGmailAppPwd,
+                     hint="xxxx xxxx xxxx xxxx", obscure=True),
+        ]
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin:  Alignment.topCenter,
-            end:    Alignment.bottomCenter,
-            colors: [Color(0xFF000C1A), Color(0xFF000000)],
-          ),
-        ),
-        child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 20),
-              _buildSection("Virtual Room and Mode",
-                  Icons.meeting_room_outlined, [
-                _buildModeSelector(),
-                if (_mode == "ADAPTIVE") ...[
-                  const SizedBox(height: 12),
-                  _buildRoomSelector(),
-                ],
-              ]),
-              const SizedBox(height: 16),
-              _buildSection("Vyshu Wardrobe",
-                  Icons.checkroom_outlined, [
-                _buildWardrobeGrid(),
-              ]),
-              const SizedBox(height: 16),
-              _buildSection("API Keys",
-                  Icons.key_rounded, [
-                ..._keyFields
-                    .where((f) => f.prefKey != VyshuConfig.kGmailAddress &&
-                                  f.prefKey != VyshuConfig.kGmailAppPwd)
-                    .map((f) => _buildKeyField(f)),
-              ]),
-              const SizedBox(height: 16),
-              _buildSection("Gmail Archive",
-                  Icons.email_outlined, [
-                ..._keyFields
-                    .where((f) => f.prefKey == VyshuConfig.kGmailAddress ||
-                                  f.prefKey == VyshuConfig.kGmailAppPwd)
-                    .map((f) => _buildKeyField(f)),
-                const SizedBox(height: 8),
-                _buildArchiveButton(),
-              ]),
-              const SizedBox(height: 16),
-              _buildSection("Voice",
-                  Icons.volume_up_outlined, [
-                _buildToggleRow(
-                    "Voice Output", _voiceEnabled, (v) {
-                  setState(() => _voiceEnabled = v);
-                  _savePref(VyshuConfig.kVoiceEnabled, v);
-                }),
-              ]),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+        self.page.on_route_change = self.load_settings
+        self.page.add(self.build())
 
-  Widget _buildHeader() {
-    return Row(children: [
-      const Icon(Icons.settings_rounded,
-          color: Color(0xFF00B4FF), size: 22),
-      const SizedBox(width: 10),
-      Text("SETTINGS",
-          style: GoogleFonts.orbitron(
-            color:         const Color(0xFF00B4FF),
-            fontSize:      16,
-            fontWeight:    FontWeight.w700,
-            letterSpacing: 2,
-          )),
-    ]);
-  }
+    async def load_settings(self, e=None):
+        # Load from client storage
+        self.mode = await self.page.client_storage.get_async(
+            VyshuConfig.kCurrentMode) or "HOME"
+        self.adaptive_room = await self.page.client_storage.get_async(
+            VyshuConfig.kAdaptiveRoom) or "park"
+        self.voice_enabled = await self.page.client_storage.get_async(
+            VyshuConfig.kVoiceEnabled) or True
+        # Load API keys into controllers
+        for f in self.key_fields:
+            saved = await self.page.client_storage.get_async(f.pref_key) or ""
+            self.controllers[f.pref_key] = ft.TextField(
+                value=saved,
+                hint_text=f.hint,
+                password=f.obscure,
+                can_reveal_password=f.obscure,
+                text_size=13,
+                border=ft.InputBorder.OUTLINE,
+                filled=True,
+                fill_color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+                border_radius=10,
+                content_padding=EdgeInsets.symmetric(horizontal=12, vertical=8),
+            )
+            self.save_status[f.pref_key] = True if saved else None
+        self.page.update()
 
-  Widget _buildSection(String title, IconData icon,
-      List<Widget> children) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color:        const Color(0xFF0F1F38),
-        borderRadius: BorderRadius.circular(16),
-        border: const Border.fromBorderSide(
-          BorderSide(color: Color(0x3300B4FF)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(icon, color: const Color(0xFF00FFFF), size: 16),
-            const SizedBox(width: 8),
-            Text(title,
-                style: GoogleFonts.inter(
-                  color:      const Color(0xFF00FFFF),
-                  fontSize:   13,
-                  fontWeight: FontWeight.w600,
-                )),
-          ]),
-          const SizedBox(height: 14),
-          ...children,
-        ],
-      ),
-    );
-  }
+    async def save_key(self, pref_key, label):
+        value = self.controllers[pref_key].value.strip()
+        if not value:
+            self.save_status[pref_key] = False
+            self.show_snack(f"⚠️ {label} cannot be empty")
+            self.page.update()
+            return
+        try:
+            await self.page.client_storage.set_async(pref_key, value)
+            # Verify
+            read_back = await self.page.client_storage.get_async(pref_key) or ""
+            if read_back == value:
+                self.save_status[pref_key] = True
+                self.show_snack(f"✅ {label} saved!")
+            else:
+                self.save_status[pref_key] = False
+                self.show_snack(f"❌ {label} write failed")
+        except Exception as e:
+            self.save_status[pref_key] = False
+            self.show_snack(f"❌ Error: {e}")
+        self.page.update()
+        # Reset status after 3 seconds
+        await asyncio.sleep(3)
+        if self.save_status.get(pref_key) is not None:
+            self.save_status[pref_key] = None
+            self.page.update()
 
-  Widget _buildModeSelector() {
-    final modes = ["HOME", "OFFICE", "ADAPTIVE"];
-    final icons = [
-      Icons.home_rounded,
-      Icons.work_rounded,
-      Icons.explore_rounded,
-    ];
-    return Row(
-      children: List.generate(3, (i) {
-        final selected = _mode == modes[i];
-        return Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() => _mode = modes[i]);
-              _savePref(VyshuConfig.kCurrentMode, modes[i]);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin:  const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0xFF00B4FF)
-                    : const Color(0xFF0A1628),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(children: [
-                Icon(icons[i], color: Colors.white, size: 20),
-                const SizedBox(height: 4),
-                Text(modes[i],
-                    style: GoogleFonts.orbitron(
-                      color:      Colors.white,
-                      fontSize:   9,
-                      fontWeight: FontWeight.w600,
-                    )),
-              ]),
+    async def save_pref(self, key, value):
+        await self.page.client_storage.set_async(key, value)
+
+    def build(self):
+        main_container = Container(
+            expand=True,
+            gradient=LinearGradient(
+                begin=Alignment.top_center,
+                end=Alignment.bottom_center,
+                colors=["#000C1A", "#000000"],
             ),
-          ),
-        );
-      }),
-    );
-  }
-
-  Widget _buildRoomSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("Choose Adaptive Room:",
-            style: GoogleFonts.inter(
-                color: const Color(0xFF7EC8E3), fontSize: 12)),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8, runSpacing: 8,
-          children: VyshuConfig.adaptiveRooms.map((room) {
-            final selected = _adaptiveRoom == room;
-            final emoji    = VyshuConfig.roomEmojis[room] ?? "🌍";
-            return GestureDetector(
-              onTap: () {
-                setState(() => _adaptiveRoom = room);
-                _savePref(VyshuConfig.kAdaptiveRoom, room);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? const Color(0xFF00B4FF)
-                      : const Color(0xFF0A1628),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: selected
-                        ? const Color(0xFF00B4FF)
-                        : const Color(0x5500B4FF),
-                  ),
-                ),
-                child: Text(
-                  "$emoji ${room[0].toUpperCase()}${room.substring(1)}",
-                  style: GoogleFonts.inter(
-                      color: Colors.white, fontSize: 12),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWardrobeGrid() {
-    final outfits = [
-      {"label": "Office 1", "icon": Icons.work_rounded},
-      {"label": "Office 2", "icon": Icons.work_outline},
-      {"label": "Office 3", "icon": Icons.business_center_outlined},
-      {"label": "Home 1",   "icon": Icons.home_rounded},
-      {"label": "Home 2",   "icon": Icons.favorite_outline},
-      {"label": "Night",    "icon": Icons.nights_stay_rounded},
-    ];
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing:  8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 0.85,
-      children: outfits.map((o) => Container(
-        decoration: BoxDecoration(
-          color:        const Color(0xFF0A1628),
-          borderRadius: BorderRadius.circular(12),
-          border: const Border.fromBorderSide(
-            BorderSide(color: Color(0x3300B4FF)),
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(o["icon"] as IconData,
-                color: const Color(0xFF00B4FF), size: 28),
-            const SizedBox(height: 6),
-            Text(o["label"] as String,
-                style: GoogleFonts.inter(
-                  color:    const Color(0xFF7EC8E3),
-                  fontSize: 10,
-                )),
-          ],
-        ),
-      )).toList(),
-    );
-  }
-
-  // ── FIX: uses persistent controller from state map ──
-  Widget _buildKeyField(_KeyField field) {
-    final controller = _controllers[field.prefKey]!;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(field.label,
-              style: GoogleFonts.inter(
-                color:    const Color(0xFF7EC8E3),
-                fontSize: 11,
-              )),
-          const SizedBox(height: 4),
-          Row(children: [
-            Expanded(
-              child: TextField(
-                controller:  controller,
-                obscureText: field.obscure,
-                style: GoogleFonts.inter(
-                    color: Colors.white, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText:  field.hint,
-                  hintStyle: GoogleFonts.inter(
-                    color:    const Color(0xFF3A5A7A),
-                    fontSize: 12,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  isDense: true,
-                ),
-              ),
+            content=ft.SafeArea(
+                Column(
+                    scroll=ft.ScrollMode.AUTO,
+                    controls=[
+                        self._build_header(),
+                        ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
+                        self._build_section(
+                            "Virtual Room and Mode", Icons.MEETING_ROOM,
+                            [
+                                self._build_mode_selector(),
+                                ft.Container(
+                                    visible=self.mode == "ADAPTIVE",
+                                    content=self._build_room_selector(),
+                                )
+                            ]
+                        ),
+                        ft.Divider(height=16, color=ft.Colors.TRANSPARENT),
+                        self._build_section(
+                            "Vyshu Wardrobe", Icons.CHECKROOM,
+                            [self._build_wardrobe_grid()]
+                        ),
+                        ft.Divider(height=16, color=ft.Colors.TRANSPARENT),
+                        self._build_section(
+                            "API Keys", Icons.KEY,
+                            [
+                                self._build_key_field(f)
+                                for f in self.key_fields
+                                if f.pref_key not in [VyshuConfig.kGmailAddress, VyshuConfig.kGmailAppPwd]
+                            ]
+                        ),
+                        ft.Divider(height=16, color=ft.Colors.TRANSPARENT),
+                        self._build_section(
+                            "Gmail Archive", Icons.EMAIL,
+                            [
+                                self._build_key_field(f)
+                                for f in self.key_fields
+                                if f.pref_key in [VyshuConfig.kGmailAddress, VyshuConfig.kGmailAppPwd]
+                            ] + [
+                                ft.Divider(height=8, color=ft.Colors.TRANSPARENT),
+                                self._build_archive_button(),
+                            ]
+                        ),
+                        ft.Divider(height=16, color=ft.Colors.TRANSPARENT),
+                        self._build_section(
+                            "Voice", Icons.VOLUME_UP,
+                            [self._build_toggle_row("Voice Output", self.voice_enabled)]
+                        ),
+                        ft.Divider(height=32, color=ft.Colors.TRANSPARENT),
+                    ],
+                )
             ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _saveKey(field.prefKey, field.label),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color:        const Color(0xFF00B4FF),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.check_rounded,
-                    color: Colors.white, size: 16),
-              ),
-            ),
-          ]),
-        ],
-      ),
-    );
-  }
+        )
+        return main_container
 
-  Widget _buildArchiveButton() {
-    return GestureDetector(
-      onTap: () async {
-        _showSnack("Archiving to Gmail...");
-        final result = await MemoryService.archiveToGmail();
-        _showSnack(result);
-      },
-      child: Container(
-        width:   double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color:        const Color(0xFF002A4A),
-          borderRadius: BorderRadius.circular(10),
-          border: const Border.fromBorderSide(
-            BorderSide(color: Color(0xFF00B4FF)),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.archive_outlined,
-                color: Color(0xFF00B4FF), size: 18),
-            const SizedBox(width: 8),
-            Text("Archive Expired Memory to Gmail",
-                style: GoogleFonts.inter(
-                  color:      const Color(0xFF00B4FF),
-                  fontSize:   13,
-                  fontWeight: FontWeight.w600,
-                )),
-          ],
-        ),
-      ),
-    );
-  }
+    def _build_header(self):
+        return Row(
+            controls=[
+                Icon(Icons.SETTINGS, color="#00B4FF", size=22),
+                ft.Divider(width=10, color=ft.Colors.TRANSPARENT),
+                Text("SETTINGS", font_family="Orbitron",
+                     size=16, weight=ft.FontWeight.BOLD, color="#00B4FF",
+                     letter_spacing=2),
+            ]
+        )
 
-  Widget _buildToggleRow(String label, bool value,
-      ValueChanged<bool> onChanged) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label,
-            style: GoogleFonts.inter(
-                color: Colors.white, fontSize: 13)),
-        Switch(
-          value:              value,
-          onChanged:          onChanged,
-          activeColor:        const Color(0xFF00B4FF),
-          inactiveTrackColor: const Color(0xFF1A2A3A),
-        ),
-      ],
-    );
-  }
+    def _build_section(self, title, icon, children):
+        return Container(
+            padding=EdgeInsets.all(16),
+            border_radius=16,
+            bgcolor="#0F1F38",
+            border=ft.border.all(color="#3300B4FF", width=1),
+            content=Column(
+                cross_axis=CrossAxisAlignment.START,
+                controls=[
+                    Row(controls=[
+                        Icon(icon, color="#00FFFF", size=16),
+                        ft.Divider(width=8, color=ft.Colors.TRANSPARENT),
+                        Text(title, size=13, weight=ft.FontWeight.W600, color="#00FFFF"),
+                    ]),
+                    ft.Divider(height=14, color=ft.Colors.TRANSPARENT),
+                    *children,
+                ]
+            )
+        )
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content:         Text(msg,
-          style: GoogleFonts.inter(fontSize: 13)),
-      backgroundColor: const Color(0xFF0A1628),
-      duration:  const Duration(seconds: 2),
-    ));
-  }
-}
+    def _build_mode_selector(self):
+        modes = ["HOME", "OFFICE", "ADAPTIVE"]
+        icons = [Icons.HOME, Icons.WORK, Icons.EXPLORE]
+        return Row(
+            controls=[
+                Container(
+                    expand=True,
+                    margin=EdgeInsets.symmetric(horizontal=4),
+                    content=GestureDetector(
+                        on_tap=lambda m=modes[i]: self._set_mode(m),
+                        content=Container(
+                            padding=EdgeInsets.symmetric(vertical=10),
+                            border_radius=10,
+                            bgcolor="#00B4FF" if self.mode == modes[i] else "#0A1628",
+                            alignment=ft.alignment.center,
+                            content=Column(
+                                spacing=4,
+                                controls=[
+                                    Icon(icons[i], color=ft.Colors.WHITE, size=20),
+                                    Text(modes[i], size=9, weight=ft.FontWeight.W600,
+                                         color=ft.Colors.WHITE, font_family="Orbitron"),
+                                ]
+                            )
+                        )
+                    ),
+                ) for i in range(3)
+            ]
+        )
 
-// ── Helper data class ──
-class _KeyField {
-  final String label;
-  final String prefKey;
-  final String hint;
-  final bool   obscure;
+    async def _set_mode(self, mode):
+        self.mode = mode
+        await self.save_pref(VyshuConfig.kCurrentMode, mode)
+        self.page.update()
 
-  const _KeyField(this.label, this.prefKey,
-      {this.hint = "Enter key...", this.obscure = false});
-}
+    def _build_room_selector(self):
+        return Column(
+            cross_axis=CrossAxisAlignment.START,
+            controls=[
+                Text("Choose Adaptive Room:", size=12, color="#7EC8E3"),
+                ft.Divider(height=8, color=ft.Colors.TRANSPARENT),
+                Wrap(
+                    spacing=8, run_spacing=8,
+                    controls=[
+                        GestureDetector(
+                            on_tap=lambda r=room: self._set_room(r),
+                            content=Container(
+                                padding=EdgeInsets.symmetric(horizontal=12, vertical=6),
+                                border_radius=20,
+                                bgcolor="#00B4FF" if self.adaptive_room == room else "#0A1628",
+                                border=ft.border.all(
+                                    color="#00B4FF" if self.adaptive_room == room else "#5500B4FF"
+                                ),
+                                content=Text(
+                                    f"{VyshuConfig.room_emojis.get(room, '🌍')} {room.capitalize()}",
+                                    size=12, color=ft.Colors.WHITE
+                                ),
+                            )
+                        ) for room in VyshuConfig.adaptive_rooms
+                    ]
+                )
+            ]
+        )
+
+    async def _set_room(self, room):
+        self.adaptive_room = room
+        await self.save_pref(VyshuConfig.kAdaptiveRoom, room)
+        self.page.update()
+
+    def _build_wardrobe_grid(self):
+        outfits = [
+            ("Office 1", Icons.WORK),
+            ("Office 2", Icons.WORK_OUTLINE),
+            ("Office 3", Icons.BUSINESS_CENTER),
+            ("Home 1", Icons.HOME),
+            ("Home 2", Icons.FAVORITE),
+            ("Night", Icons.NIGHTS_STAY),
+        ]
+        return GridView(
+            expand=False,
+            runs_count=3,
+            max_extent=100,
+            child_aspect_ratio=0.85,
+            spacing=8,
+            run_spacing=8,
+            controls=[
+                Container(
+                    border_radius=12,
+                    bgcolor="#0A1628",
+                    border=ft.border.all(color="#3300B4FF"),
+                    alignment=ft.alignment.center,
+                    content=Column(
+                        main_axis=MainAxisAlignment.CENTER,
+                        spacing=6,
+                        controls=[
+                            Icon(icon, color="#00B4FF", size=28),
+                            Text(label, size=10, color="#7EC8E3"),
+                        ]
+                    )
+                ) for label, icon in outfits
+            ]
+        )
+
+    def _build_key_field(self, field: KeyField):
+        controller = self.controllers[field.pref_key]
+        status = self.save_status.get(field.pref_key)
+        btn_color = "#00B4FF"
+        btn_icon = Icons.CHECK
+        if status is True:
+            btn_color = "#00C853"
+            btn_icon = Icons.CHECK_CIRCLE
+        elif status is False:
+            btn_color = "#FF3B3B"
+            btn_icon = Icons.ERROR
+
+        return Column(
+            cross_axis=CrossAxisAlignment.START,
+            controls=[
+                Text(field.label, size=11, color="#7EC8E3"),
+                ft.Divider(height=4, color=ft.Colors.TRANSPARENT),
+                Row(
+                    controls=[
+                        Container(expand=True, content=controller),
+                        ft.Divider(width=8, color=ft.Colors.TRANSPARENT),
+                        Container(
+                            border_radius=10,
+                            bgcolor=btn_color,
+                            content=IconButton(
+                                icon=Icon(btn_icon, color=ft.Colors.WHITE, size=18),
+                                on_click=lambda e, pk=field.pref_key, lbl=field.label: asyncio.create_task(self.save_key(pk, lbl)),
+                                padding=EdgeInsets.symmetric(horizontal=12, vertical=10),
+                            )
+                        )
+                    ]
+                )
+            ]
+        )
+
+    def _build_archive_button(self):
+        return GestureDetector(
+            on_tap=lambda _: asyncio.create_task(self._archive_to_gmail()),
+            content=Container(
+                width=float('inf'),
+                padding=EdgeInsets.symmetric(vertical=12),
+                border_radius=10,
+                bgcolor="#002A4A",
+                border=ft.border.all(color="#00B4FF"),
+                content=Row(
+                    main_axis=MainAxisAlignment.CENTER,
+                    controls=[
+                        Icon(Icons.ARCHIVE, color="#00B4FF", size=18),
+                        ft.Divider(width=8, color=ft.Colors.TRANSPARENT),
+                        Text("Archive Expired Memory to Gmail", size=13,
+                             weight=ft.FontWeight.W600, color="#00B4FF"),
+                    ]
+                )
+            )
+        )
+
+    async def _archive_to_gmail(self):
+        self.show_snack("Archiving to Gmail...")
+        result = await MemoryService.archive_to_gmail()
+        self.show_snack(result)
+
+    def _build_toggle_row(self, label, value):
+        return Row(
+            main_axis=MainAxisAlignment.SPACE_BETWEEN,
+            controls=[
+                Text(label, size=13, color=ft.Colors.WHITE),
+                Switch(
+                    value=value,
+                    on_change=lambda e: asyncio.create_task(self._toggle_voice(e.control.value)),
+                    active_color="#00B4FF",
+                    inactive_track_color="#1A2A3A",
+                )
+            ]
+        )
+
+    async def _toggle_voice(self, val):
+        self.voice_enabled = val
+        await self.save_pref(VyshuConfig.kVoiceEnabled, val)
+        self.page.update()
+
+    def show_snack(self, message):
+        self.page.show_snack_bar(
+            SnackBar(content=Text(message, size=13), bgcolor="#0A1628", duration=2000)
+        )
+
+
+async def main(page: Page):
+    page.window_width = 450
+    page.window_height = 800
+    settings = SettingsScreen(page)
+
+if __name__ == "__main__":
+    ft.app(target=main)
