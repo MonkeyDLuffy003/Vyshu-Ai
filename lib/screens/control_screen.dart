@@ -26,9 +26,7 @@ DEFAULT_CONFIG = {
 }
 
 ADAPTIVE_ROOMS = ["park", "cafe", "library", "ocean"]
-ROOM_EMOJIS = {
-    "park": "🌳", "cafe": "☕", "library": "📚", "ocean": "🌊"
-}
+ROOM_EMOJIS = {"park": "🌳", "cafe": "☕", "library": "📚", "ocean": "🌊"}
 
 
 def load_config():
@@ -48,7 +46,6 @@ def save_config(config):
 # Stub for Gmail archive (replace with actual implementation)
 # ----------------------------------------------------------------------
 def archive_to_gmail():
-    # In your actual application, implement email sending logic here
     messagebox.showinfo("Archive", "Memory archived to Gmail (stub).")
     return "Archive completed (stub)"
 
@@ -108,7 +105,7 @@ class SettingsApp:
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
-        # Build UI inside scrollable_frame
+        # Build UI
         self.build_ui()
 
         # Bind mouse wheel scrolling
@@ -121,6 +118,10 @@ class SettingsApp:
     # UI Construction
     # ------------------------------------------------------------------
     def build_ui(self):
+        # Clear previous content
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+
         pad = 10
         # Header
         header = Frame(self.scrollable_frame, bg="#000000")
@@ -129,43 +130,22 @@ class SettingsApp:
               fg="#00B4FF", bg="#000000").pack(side="left")
 
         # ------------------- Virtual Room Section -------------------
-        self.make_section("Virtual Room", "🏠", [
-            self.mode_selector(),
-            ("adaptive_room", self.adaptive_room_selector) if self.mode_var.get() == "ADAPTIVE" else None
-        ])
+        self.make_section("Virtual Room", "🏠", self._virtual_room_content)
 
         # ------------------- Gemini Keys Section -------------------
-        self.make_section("Gemini Keys", "🧠", [
-            self.key_row("Gemini Key 1", self.gemini1_var, "gemini_key_1"),
-            self.key_row("Gemini Key 2", self.gemini2_var, "gemini_key_2"),
-            self.key_row("Gemini Key 3", self.gemini3_var, "gemini_key_3"),
-        ])
+        self.make_section("Gemini Keys", "🧠", self._gemini_keys_content)
 
         # ------------------- Other Keys Section -------------------
-        self.make_section("Other Keys", "🔑", [
-            self.key_row("Groq Key", self.groq_var, "groq_key"),
-            self.key_row("Together AI", self.together_var, "together_key"),
-            self.key_row("Tavily Search", self.tavily_var, "tavily_key"),
-            self.key_row("ElevenLabs", self.elevenlabs_var, "elevenlabs_key"),
-        ])
+        self.make_section("Other Keys", "🔑", self._other_keys_content)
 
         # ------------------- Discord Section -------------------
-        self.make_section("Discord", "🎮", [
-            self.key_row("Discord Token", self.discord_token_var, "discord_token", obscured=True),
-            self.key_row("Discord Owner ID", self.discord_id_var, "discord_owner_id"),
-        ])
+        self.make_section("Discord", "🎮", self._discord_content)
 
         # ------------------- Gmail Archive Section -------------------
-        self.make_section("Gmail Archive", "📧", [
-            self.key_row("Gmail Address", self.gmail_addr_var, "gmail_address"),
-            self.key_row("App Password", self.gmail_pwd_var, "gmail_app_password", obscured=True),
-            self.archive_button(),
-        ])
+        self.make_section("Gmail Archive", "📧", self._gmail_content)
 
         # ------------------- Voice Section -------------------
-        self.make_section("Voice", "🔊", [
-            self.voice_toggle()
-        ])
+        self.make_section("Voice", "🔊", self._voice_content)
 
         # ------------------- Save All Button -------------------
         btn_save_all = Button(self.scrollable_frame, text="SAVE ALL KEYS",
@@ -174,67 +154,73 @@ class SettingsApp:
                               command=self.save_all)
         btn_save_all.pack(pady=(20, 30), padx=pad, fill="x")
 
-    def make_section(self, title, emoji, widgets):
-        """Create a titled container frame and pack given widgets inside."""
+    def make_section(self, title, emoji, content_builder):
+        """Create a titled container and call content_builder to add widgets inside."""
         section = LabelFrame(self.scrollable_frame, text=f" {emoji} {title} ", style="TLabelframe")
         section.pack(fill="x", padx=10, pady=8)
-        for w in widgets:
-            if w is None:
-                continue
-            if callable(w):
-                w()      # function that adds its own widgets inside section
-            else:
-                w.pack(fill="x", padx=8, pady=4)
+        content_builder(section)
 
-    # --------------------------------------------------------------
-    # Mode selector (HOME / OFFICE / ADAPTIVE)
-    # --------------------------------------------------------------
-    def mode_selector(self):
-        frame = Frame(self.scrollable_frame, bg="#0F1F38")
-        frame.pack(fill="x", pady=5)
+    # ------------------------------------------------------------------
+    # Content builders (each receives parent frame)
+    # ------------------------------------------------------------------
+    def _virtual_room_content(self, parent):
+        # Mode selector row
+        mode_frame = Frame(parent, bg="#0F1F38")
+        mode_frame.pack(fill="x", pady=5)
         modes = [("HOME", "🏠"), ("OFFICE", "💼"), ("ADAPTIVE", "🌍")]
-        for i, (mode, icon) in enumerate(modes):
-            btn = Button(frame, text=f"{icon} {mode}", font=("Orbitron", 9),
+        for mode, icon in modes:
+            btn = Button(mode_frame, text=f"{icon} {mode}", font=("Orbitron", 9),
                          bg="#00B4FF" if self.mode_var.get() == mode else "#0A1628",
                          fg="white", relief="flat", padx=10, pady=5,
                          command=lambda m=mode: self.change_mode(m))
             btn.pack(side="left", expand=True, fill="x", padx=2)
-        return frame
 
-    def change_mode(self, mode):
-        self.mode_var.set(mode)
-        self.config["current_mode"] = mode
-        save_config(self.config)
-        # Refresh UI to show/hide adaptive room selector
-        for widget in self.scrollable_frame.winfo_children():
-            widget.destroy()
-        self.build_ui()
+        # Adaptive room selector (only if ADAPTIVE mode)
+        if self.mode_var.get() == "ADAPTIVE":
+            room_frame = Frame(parent, bg="#0F1F38")
+            room_frame.pack(fill="x", pady=5)
+            for room in ADAPTIVE_ROOMS:
+                emoji = ROOM_EMOJIS.get(room, "🌍")
+                bg = "#00B4FF" if self.room_var.get() == room else "#0A1628"
+                btn = Button(room_frame, text=f"{emoji} {room.capitalize()}", font=("Inter", 10),
+                             bg=bg, fg="white", relief="flat", padx=12, pady=4,
+                             command=lambda r=room: self.change_room(r))
+                btn.pack(side="left", padx=4, pady=2)
 
-    # --------------------------------------------------------------
-    # Adaptive room selector (pill buttons)
-    # --------------------------------------------------------------
-    def adaptive_room_selector(self):
-        frame = Frame(self.scrollable_frame, bg="#0F1F38")
-        frame.pack(fill="x", pady=5)
-        for room in ADAPTIVE_ROOMS:
-            emoji = ROOM_EMOJIS.get(room, "🌍")
-            bg = "#00B4FF" if self.room_var.get() == room else "#0A1628"
-            btn = Button(frame, text=f"{emoji} {room.capitalize()}", font=("Inter", 10),
-                         bg=bg, fg="white", relief="flat", padx=12, pady=4,
-                         command=lambda r=room: self.change_room(r))
-            btn.pack(side="left", padx=4, pady=2)
-        return frame
+    def _gemini_keys_content(self, parent):
+        self._key_row(parent, "Gemini Key 1", self.gemini1_var, "gemini_key_1")
+        self._key_row(parent, "Gemini Key 2", self.gemini2_var, "gemini_key_2")
+        self._key_row(parent, "Gemini Key 3", self.gemini3_var, "gemini_key_3")
 
-    def change_room(self, room):
-        self.room_var.set(room)
-        self.config["adaptive_room"] = room
-        save_config(self.config)
+    def _other_keys_content(self, parent):
+        self._key_row(parent, "Groq Key", self.groq_var, "groq_key")
+        self._key_row(parent, "Together AI", self.together_var, "together_key")
+        self._key_row(parent, "Tavily Search", self.tavily_var, "tavily_key")
+        self._key_row(parent, "ElevenLabs", self.elevenlabs_var, "elevenlabs_key")
 
-    # --------------------------------------------------------------
-    # Single key row with save button
-    # --------------------------------------------------------------
-    def key_row(self, label, var, config_key, obscured=False):
-        frame = Frame(self.scrollable_frame, bg="#0F1F38")
+    def _discord_content(self, parent):
+        self._key_row(parent, "Discord Token", self.discord_token_var, "discord_token", obscured=True)
+        self._key_row(parent, "Discord Owner ID", self.discord_id_var, "discord_owner_id")
+
+    def _gmail_content(self, parent):
+        self._key_row(parent, "Gmail Address", self.gmail_addr_var, "gmail_address")
+        self._key_row(parent, "App Password", self.gmail_pwd_var, "gmail_app_password", obscured=True)
+        btn = Button(parent, text="📁 Archive Memory to Gmail",
+                     bg="#002A4A", fg="#00B4FF", font=("Inter", 11, "bold"),
+                     relief="solid", bd=1, command=archive_to_gmail)
+        btn.pack(fill="x", pady=(8, 0))
+
+    def _voice_content(self, parent):
+        Checkbutton(parent, text="Voice Output", variable=self.voice_var,
+                    onvalue=True, offvalue=False,
+                    bg="#0F1F38", fg="white", selectcolor="#0F1F38",
+                    command=self.save_voice_setting).pack(anchor="w")
+
+    # ------------------------------------------------------------------
+    # Helper: single key row with save button
+    # ------------------------------------------------------------------
+    def _key_row(self, parent, label, var, config_key, obscured=False):
+        frame = Frame(parent, bg="#0F1F38")
         frame.pack(fill="x", pady=4)
 
         Label(frame, text=label, font=("Inter", 9), fg="#7EC8E3", bg="#0F1F38").pack(anchor="w")
@@ -249,42 +235,30 @@ class SettingsApp:
         btn_save = Button(row, text="✓", width=3, bg="#00B4FF", fg="white",
                           relief="flat", command=lambda: self.save_single(config_key, var))
         btn_save.pack(side="right")
-        return frame
+
+    # ------------------------------------------------------------------
+    # Actions
+    # ------------------------------------------------------------------
+    def change_mode(self, mode):
+        self.mode_var.set(mode)
+        self.config["current_mode"] = mode
+        save_config(self.config)
+        self.build_ui()   # rebuild to show/hide adaptive room selector
+
+    def change_room(self, room):
+        self.room_var.set(room)
+        self.config["adaptive_room"] = room
+        save_config(self.config)
 
     def save_single(self, config_key, var):
         self.config[config_key] = var.get().strip()
         save_config(self.config)
         messagebox.showinfo("Saved", f"{config_key} saved successfully.")
 
-    # --------------------------------------------------------------
-    # Voice toggle
-    # --------------------------------------------------------------
-    def voice_toggle(self):
-        frame = Frame(self.scrollable_frame, bg="#0F1F38")
-        frame.pack(fill="x", pady=4)
-        Checkbutton(frame, text="Voice Output", variable=self.voice_var,
-                    onvalue=True, offvalue=False,
-                    bg="#0F1F38", fg="white", selectcolor="#0F1F38",
-                    command=self.save_voice_setting).pack(anchor="w")
-        return frame
-
     def save_voice_setting(self):
         self.config["voice_enabled"] = self.voice_var.get()
         save_config(self.config)
 
-    # --------------------------------------------------------------
-    # Archive button
-    # --------------------------------------------------------------
-    def archive_button(self):
-        btn = Button(self.scrollable_frame, text="📁 Archive Memory to Gmail",
-                     bg="#002A4A", fg="#00B4FF", font=("Inter", 11, "bold"),
-                     relief="solid", bd=1, command=archive_to_gmail)
-        btn.pack(fill="x", pady=(8, 0))
-        return btn
-
-    # --------------------------------------------------------------
-    # Save all keys at once
-    # --------------------------------------------------------------
     def save_all(self):
         self.config.update({
             "gemini_key_1": self.gemini1_var.get().strip(),
