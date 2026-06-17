@@ -1,7 +1,2 @@
 flet
-google-generativeai
-groq
-discord.py
-pvporcupine
-SpeechRecognition
-gtts
+httpx
