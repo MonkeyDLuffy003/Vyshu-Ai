@@ -5,6 +5,10 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# This tells the server not to use complex text prompts
+env:
+  FLET_CLI_NO_RICH_OUTPUT: 1
+
 jobs:
   build_apk:
     runs-on: ubuntu-latest
@@ -30,6 +34,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build Android APK
+        # The 'yes |' automatically answers "y" to the installation prompt
         run: |
           yes | flet build apk --project "Vyshu AI" --org "com.tejaswaroop.vyshu" 
 
