@@ -1,70 +1,35 @@
-name: Vyshu AI V4 Build APK
+name: Build Vyshu AI Android APK
+
 on:
   push:
-    branches: [main]
+    branches: [ "main" ]
   workflow_dispatch:
+
 jobs:
-  build:
+  build_apk:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.22.0"
-          channel: stable
-          cache: true
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Setup project
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Flet and Dependencies
         run: |
-          flutter create --org com.tejaapps --project-name vyshu_ai /tmp/vf
-          rm -rf /tmp/vf/lib
+          python -m pip install --upgrade pip
+          pip install flet
+          pip install -r requirements.txt
 
-          # ── 1. ALL directories first ──────────────────────────────
-          mkdir -p /tmp/vf/assets/vyshu/office
-          mkdir -p /tmp/vf/assets/vyshu/home
-          mkdir -p /tmp/vf/assets/vyshu/adaptive
-          mkdir -p /tmp/vf/assets/rooms
-          mkdir -p /tmp/vf/android/app/src/main/kotlin/com/tejaapps/vyshuai
+      - name: Build Android APK
+        run: |
+          flet build apk --project "Vyshu AI" --org "com.tejaswaroop.vyshu" 
 
-          # ── 2. Copy lib + config ──────────────────────────────────
-          cp -r lib /tmp/vf/
-          cp pubspec.yaml /tmp/vf/
-
-          # ── 3. Copy assets ────────────────────────────────────────
-          cp assets/vyshu_logo.png /tmp/vf/assets/
-          cp assets/vyshu/office/outfit_1.png /tmp/vf/assets/vyshu/office/
-
-          # ── 4. Copy Android files ─────────────────────────────────
-          cp android/app/src/main/AndroidManifest.xml \
-             /tmp/vf/android/app/src/main/
-          cp android/app/src/main/res/values/styles.xml \
-             /tmp/vf/android/app/src/main/res/values/
-          cp android/app/src/main/kotlin/com/tejaapps/vyshuai/MainActivity.kt \
-             /tmp/vf/android/app/src/main/kotlin/com/tejaapps/vyshuai/
-
-          # ── 5. minSdk fix ─────────────────────────────────────────
-          echo "=== BEFORE ===" && grep -n "minSdk" /tmp/vf/android/app/build.gradle
-          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' /tmp/vf/android/app/build.gradle
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' /tmp/vf/android/app/build.gradle
-          sed -i 's/minSdk flutter.minSdkVersion/minSdk 23/' /tmp/vf/android/app/build.gradle
-          echo "=== AFTER ===" && grep -n "minSdk" /tmp/vf/android/app/build.gradle
-
-          find /tmp/vf/assets -type d -exec touch {}/.keep \;
-
-      - name: pub get
-        working-directory: /tmp/vf
-        run: flutter pub get
-
-      - name: build apk
-        working-directory: /tmp/vf
-        run: flutter build apk --release --split-per-abi
-
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
         with:
-          name: vyshu-ai-v4-apk
-          path: /tmp/vf/build/app/outputs/flutter-apk/app-*-release.apk
-          retention-days: 30
+          name: Vyshu-AI-V1-Release
+          path: build/apk/*.apk
