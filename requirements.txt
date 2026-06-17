@@ -1,0 +1,6 @@
+flet
+google-generativeai
+groq
+discord.py
+pvporcupine
+pyaudio
