@@ -1,44 +1,28 @@
-name: Build Vyshu AI Flutter APK
+name: vyshu_ai
+description: Vyshu AI - Your Personal AI Secretary
+publish_to: 'none'
+version: 1.0.0+1
 
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+environment:
+  sdk: '>=3.0.0 <4.0.0'
 
-jobs:
-  build_apk:
-    runs-on: ubuntu-latest
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  shared_preferences: ^2.3.2
+  sqflite: ^2.3.3
+  path: ^1.9.0
+  flutter_tts: ^4.0.2
+  speech_to_text: ^7.0.0
+  url_launcher: ^6.3.0
+  permission_handler: ^11.3.1
+  flutter_local_notifications: ^18.0.1
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.44.0'
-          channel: 'stable'
-
-      - name: Create Flutter Project Structure
-        run: |
-          flutter create --org com.tejaswaroop --project-name vyshu_ai temp_project
-          cp -r temp_project/android .
-          rm -rf temp_project
-
-      - name: Get Dependencies
-        run: flutter pub get
-
-      - name: Build APK
-        run: flutter build apk --release --split-per-abi
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Vyshu-AI-V1-Flutter
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+flutter:
+  uses-material-design: true
