@@ -1,2 +1,6 @@
 flet
 httpx
+SpeechRecognition
+gtts
+pvporcupine
+pyaudio
