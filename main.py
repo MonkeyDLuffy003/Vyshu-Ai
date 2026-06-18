@@ -8,7 +8,8 @@ boot_crash_log = ""
 try:
     import json
     import os
-    # If you imported brain or memory, it will be tested here
+    import asyncio
+    import brain  # ✅ FIX 3: Connected brain to main
 except Exception as e:
     boot_crash_log = traceback.format_exc()
 
@@ -54,10 +55,18 @@ def main(page: ft.Page):
 
         def send_message(e):
             if not user_input.value: return
-            chat_log.controls.append(ft.Text(f"You: {user_input.value}", color=ft.colors.WHITE))
-            reply = "I am processing that. (Logic core connecting...)"
-            chat_log.controls.append(ft.Text(f"Vyshu: {reply}", color=ft.colors.CYAN_200))
+            user_text = user_input.value
+            chat_log.controls.append(ft.Text(f"You: {user_text}", color=ft.colors.WHITE))
             user_input.value = ""
+            page.update()
+
+            # ✅ FIX 3: Actually call brain.py now
+            try:
+                reply = asyncio.run(brain.generate_response(user_text, mode="HOME"))
+            except Exception as ex:
+                reply = f"⚠️ Brain error: {str(ex)}"
+
+            chat_log.controls.append(ft.Text(f"Vyshu: {reply}", color=ft.colors.CYAN_200))
             page.update()
 
         user_input = ft.TextField(hint_text="Message Vyshu...", expand=True, border_radius=20, filled=True, bgcolor=ft.colors.with_opacity(0.5, ft.colors.BLACK), on_submit=send_message)
@@ -66,7 +75,6 @@ def main(page: ft.Page):
             expand=True,
             controls=[
                 ft.Container(expand=True, gradient=ft.LinearGradient(begin=ft.alignment.top_center, end=ft.alignment.bottom_center, colors=[ft.colors.BLUE_GREY_900, ft.colors.BLACK])),
-                # Image temporarily removed to ensure no pathing crashes
                 ft.Column(
                     expand=True,
                     controls=[
@@ -128,4 +136,3 @@ def main(page: ft.Page):
 
 # Assets dir removed temporarily for safe booting
 ft.app(target=main)
-                    
