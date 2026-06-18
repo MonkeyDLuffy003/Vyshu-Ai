@@ -1,11 +1,15 @@
-import speech_recognition as sr
-import pvporcupine
-import pyaudio
 import struct
 import os
-from gtts import gTTS
 import flet as ft
 
+try:
+    import pvporcupine
+    import pyaudio
+    import speech_recognition as sr
+    from gtts import gTTS
+    VOICE_AVAILABLE = True
+except ImportError:
+    VOICE_AVAILABLE = False
 # ---------------------------------------------------------
 # THE MOUTH: TEXT-TO-SPEECH
 # ---------------------------------------------------------
