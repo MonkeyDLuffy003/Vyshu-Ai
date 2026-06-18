@@ -82,4 +82,133 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  Widget _buildKeyField(String
+  Widget _buildKeyField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: controller,
+        obscureText: true,
+        enableSuggestions: false,
+        autocorrect: false,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: Colors.white54),
+          filled: true,
+          fillColor: const Color(0xFF111111),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF00CCFF)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF333333)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF00CCFF), width: 2),
+          ),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.visibility, color: Colors.white38),
+            onPressed: () {
+              // Toggle visibility handled by obscureText
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text(
+          '🔐 Vyshu Vault',
+          style: TextStyle(color: Color(0xFF00CCFF), fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF00CCFF)))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Gemini Keys (Brain)',
+                    style: TextStyle(
+                      color: Color(0xFF00CCFF),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildKeyField('Gemini Key 1 (Primary)', _gemini1),
+                  _buildKeyField('Gemini Key 2', _gemini2),
+                  _buildKeyField('Gemini Key 3', _gemini3),
+                  _buildKeyField('Gemini Key 4', _gemini4),
+                  _buildKeyField('Gemini Key 5', _gemini5),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Groq Key (Translation)',
+                    style: TextStyle(
+                      color: Color(0xFF00CCFF),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildKeyField('Groq API Key', _groq),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Discord',
+                    style: TextStyle(
+                      color: Color(0xFF00CCFF),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildKeyField('Discord Token', _discordToken),
+                  _buildKeyField('Discord Admin ID', _discordId),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton.icon(
+                      onPressed: _isSaving ? null : _saveKeys,
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.lock, color: Colors.white),
+                      label: Text(
+                        _isSaving ? 'Saving...' : 'Lock & Save Vault',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00CCFF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
