@@ -1,0 +1,28 @@
+name: vyshu_ai
+description: Vyshu AI - Your Personal AI Secretary
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  shared_preferences: ^2.2.2
+  sqflite: ^2.3.2
+  path: ^1.8.3
+  flutter_tts: ^3.8.5
+  speech_to_text: ^6.6.0
+  url_launcher: ^6.2.4
+  permission_handler: ^11.3.0
+  flutter_local_notifications: ^17.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
