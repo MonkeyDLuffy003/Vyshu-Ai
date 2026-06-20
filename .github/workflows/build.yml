@@ -30,7 +30,8 @@ jobs:
           flutter create --org com.tejaswaroop --project-name vyshu_ai temp_project
           cp -r temp_project/android .
           rm -rf temp_project
-          - name: Fix Gradle Wrapper Version
+
+      - name: Fix Gradle Wrapper Version
         run: |
           cd android
           sed -i 's/distributionUrl=.*/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.7-all.zip/' gradle/wrapper/gradle-wrapper.properties
