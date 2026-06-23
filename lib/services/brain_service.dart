@@ -2,6 +2,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+const String _defaultGeminiKey = String.fromEnvironment('DEFAULT_GEMINI_KEY');
+
 class BrainService {
   int _currentKeyIndex = 0;
 
@@ -39,6 +41,11 @@ BEHAVIOR:
       prefs.getString('gemini_4') ?? '',
       prefs.getString('gemini_5') ?? '',
     ].where((k) => k.isNotEmpty).toList();
+
+    if (keys.isEmpty && _defaultGeminiKey.isNotEmpty) {
+      keys.add(_defaultGeminiKey);
+    }
+
     return keys;
   }
 
@@ -100,7 +107,8 @@ BEHAVIOR:
         return "⚠️ API Error ${response.statusCode}. Please check your Gemini key in Vault.";
       }
     } catch (e) {
-      return "😅 I lost connection! Please check your internet. (${e.toString()})";
+      final safeError = e.toString().replaceAll(RegExp(r'key=[^&\s)]+'), 'key=***');
+      return "😅 I lost connection! Please check your internet. ($safeError)";
     }
   }
 }
