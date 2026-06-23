@@ -35,7 +35,7 @@ jobs:
         run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --dart-define=DEFAULT_GEMINI_KEY=${{ secrets.DEFAULT_GEMINI_KEY }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
