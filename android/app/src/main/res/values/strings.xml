@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Vyshu AI uses this to toggle WiFi, Bluetooth, brightness, and other system settings when you ask it to.</string>
+</resources>
