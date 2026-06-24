@@ -25,19 +25,10 @@ jobs:
           flutter-version: '3.44.0'
           channel: 'stable'
 
-      - name: Restore Missing Gradle Build Files
+      - name: Restore Missing Android Files
         run: |
           flutter create --org com.tejaswaroop --project-name vyshu temp_project
-          cp -n temp_project/android/build.gradle android/build.gradle 2>/dev/null || true
-          cp -n temp_project/android/build.gradle.kts android/build.gradle.kts 2>/dev/null || true
-          cp -n temp_project/android/settings.gradle android/settings.gradle 2>/dev/null || true
-          cp -n temp_project/android/settings.gradle.kts android/settings.gradle.kts 2>/dev/null || true
-          cp -n temp_project/android/gradle.properties android/gradle.properties 2>/dev/null || true
-          cp -n temp_project/android/gradlew android/gradlew 2>/dev/null || true
-          cp -n temp_project/android/gradlew.bat android/gradlew.bat 2>/dev/null || true
-          cp -rn temp_project/android/gradle android/gradle 2>/dev/null || true
-          cp -n temp_project/android/app/build.gradle android/app/build.gradle 2>/dev/null || true
-          cp -n temp_project/android/app/build.gradle.kts android/app/build.gradle.kts 2>/dev/null || true
+          cp -rn temp_project/android/. android/
           chmod +x android/gradlew
           rm -rf temp_project
 
