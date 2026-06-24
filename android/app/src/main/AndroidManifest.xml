@@ -30,7 +30,7 @@
         android:label="Vyshu AI"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesClearTextTraffic="true"
+        android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true">
 
         <activity
