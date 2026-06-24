@@ -1,3 +1,4 @@
+
 name: vyshu_ai
 description: Vyshu AI - Your Personal AI Secretary
 publish_to: 'none'
@@ -11,6 +12,7 @@ dependencies:
     sdk: flutter
   http: ^1.2.0
   shared_preferences: ^2.3.2
+  connectivity_plus: ^6.0.0
 
 dev_dependencies:
   flutter_test:
