@@ -28,7 +28,7 @@ jobs:
       - name: Restore Missing Android Files
         run: |
           flutter create --org com.tejaswaroop --project-name vyshu temp_project
-          cp -rn temp_project/android/. android/
+          rsync -a --ignore-existing temp_project/android/ android/
           chmod +x android/gradlew
           rm -rf temp_project
 
