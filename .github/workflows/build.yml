@@ -32,6 +32,13 @@ jobs:
           chmod +x android/gradlew
           rm -rf temp_project
 
+      - name: Show Generated Gradle File
+        run: |
+          echo "---- app/build.gradle.kts ----"
+          cat android/app/build.gradle.kts 2>/dev/null || echo "not found"
+          echo "---- app/build.gradle ----"
+          cat android/app/build.gradle 2>/dev/null || echo "not found"
+
       - name: Get Dependencies
         run: flutter pub get
 
