@@ -66,7 +66,7 @@ BEHAVIOR:
       _currentKeyIndex = (_currentKeyIndex + 1) % keys.length;
 
       final url =
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$key';
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$key';
 
       final body = jsonEncode({
         "contents": [
