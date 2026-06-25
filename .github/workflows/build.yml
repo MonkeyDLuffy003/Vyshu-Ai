@@ -34,31 +34,13 @@ jobs:
 
       - name: Fix compileSdk Version
         run: |
-          # Patch app-level compileSdk
           sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 35/' android/app/build.gradle.kts 2>/dev/null || true
           sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/' android/app/build.gradle 2>/dev/null || true
 
-          # Force ALL plugin modules (e.g. android_intent_plus) to compileSdk 35 too
           if [ -f android/build.gradle.kts ]; then
-            cat >> android/build.gradle.kts << 'EOF'
-
-subprojects {
-    afterEvaluate {
-        extensions.findByType<com.android.build.gradle.BaseExtension>()?.compileSdkVersion(35)
-    }
-}
-EOF
+            printf '\nsubprojects {\n    afterEvaluate {\n        extensions.findByType<com.android.build.gradle.BaseExtension>()?.compileSdkVersion(35)\n    }\n}\n' >> android/build.gradle.kts
           elif [ -f android/build.gradle ]; then
-            cat >> android/build.gradle << 'EOF'
-
-subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            project.android.compileSdkVersion 35
-        }
-    }
-}
-EOF
+            printf '\nsubprojects {\n    afterEvaluate { project ->\n        if (project.hasProperty("android")) {\n            project.android.compileSdkVersion 35\n        }\n    }\n}\n' >> android/build.gradle
           fi
 
       - name: Show Generated Gradle File
