@@ -32,6 +32,11 @@ jobs:
           chmod +x android/gradlew
           rm -rf temp_project
 
+      - name: Fix compileSdk Version
+        run: |
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 35/' android/app/build.gradle.kts 2>/dev/null || true
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/' android/app/build.gradle 2>/dev/null || true
+
       - name: Show Generated Gradle File
         run: |
           echo "---- app/build.gradle.kts ----"
