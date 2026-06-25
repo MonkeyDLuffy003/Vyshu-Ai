@@ -34,8 +34,32 @@ jobs:
 
       - name: Fix compileSdk Version
         run: |
+          # Patch app-level compileSdk
           sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 35/' android/app/build.gradle.kts 2>/dev/null || true
           sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/' android/app/build.gradle 2>/dev/null || true
+
+          # Force ALL plugin modules (e.g. android_intent_plus) to compileSdk 35 too
+          if [ -f android/build.gradle.kts ]; then
+            cat >> android/build.gradle.kts << 'EOF'
+
+subprojects {
+    afterEvaluate {
+        extensions.findByType<com.android.build.gradle.BaseExtension>()?.compileSdkVersion(35)
+    }
+}
+EOF
+          elif [ -f android/build.gradle ]; then
+            cat >> android/build.gradle << 'EOF'
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android.compileSdkVersion 35
+        }
+    }
+}
+EOF
+          fi
 
       - name: Show Generated Gradle File
         run: |
@@ -43,6 +67,13 @@ jobs:
           cat android/app/build.gradle.kts 2>/dev/null || echo "not found"
           echo "---- app/build.gradle ----"
           cat android/app/build.gradle 2>/dev/null || echo "not found"
+
+      - name: Show Root Gradle File
+        run: |
+          echo "---- android/build.gradle.kts ----"
+          cat android/build.gradle.kts 2>/dev/null || echo "not found"
+          echo "---- android/build.gradle ----"
+          cat android/build.gradle 2>/dev/null || echo "not found"
 
       - name: Get Dependencies
         run: flutter pub get
