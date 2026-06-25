@@ -13,6 +13,8 @@ dependencies:
   http: ^1.2.0
   shared_preferences: ^2.3.2
   connectivity_plus: ^6.0.0
+  permission_handler: ^11.3.0 and 
+  android_intent_plus: ^4.0.3
 
 dev_dependencies:
   flutter_test:
