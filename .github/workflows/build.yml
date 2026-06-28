@@ -32,42 +32,10 @@ jobs:
           chmod +x android/gradlew
           rm -rf temp_project
 
-      - name: DEBUG - Show RAW generated file before any sed
+      - name: Verify our committed build.gradle.kts is in place
         run: |
-          echo "===== RAW android/app/build.gradle.kts ====="
-          cat android/app/build.gradle.kts 2>/dev/null || echo "FILE DOES NOT EXIST"
-          echo "===== END RAW FILE ====="
-
-      - name: Fix compileSdk Version
-        run: |
-          echo "flutter.compileSdkVersion=36" >> android/gradle.properties
-          echo "flutter.targetSdkVersion=36" >> android/gradle.properties
-
-          echo "===== android/gradle.properties after patch ====="
-          cat android/gradle.properties
-
-          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts 2>/dev/null || true
-          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/' android/app/build.gradle 2>/dev/null || true
-          sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 36/' android/app/build.gradle.kts 2>/dev/null || true
-          sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 36/' android/app/build.gradle 2>/dev/null || true
-          sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts 2>/dev/null || true
-          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 36/' android/app/build.gradle 2>/dev/null || true
-          sed -i 's/targetSdk = [0-9]\+/targetSdk = 36/' android/app/build.gradle.kts 2>/dev/null || true
-          sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 36/' android/app/build.gradle 2>/dev/null || true
-
-      - name: Show Generated Gradle File
-        run: |
-          echo "---- app/build.gradle.kts ----"
-          cat android/app/build.gradle.kts 2>/dev/null || echo "not found"
-          echo "---- app/build.gradle ----"
-          cat android/app/build.gradle 2>/dev/null || echo "not found"
-
-      - name: Show Root Gradle File
-        run: |
-          echo "---- android/build.gradle.kts ----"
-          cat android/build.gradle.kts 2>/dev/null || echo "not found"
-          echo "---- android/build.gradle ----"
-          cat android/build.gradle 2>/dev/null || echo "not found"
+          echo "===== android/app/build.gradle.kts (should show compileSdk = 36) ====="
+          cat android/app/build.gradle.kts
 
       - name: Get Dependencies
         run: flutter pub get
