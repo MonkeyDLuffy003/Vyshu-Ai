@@ -15,6 +15,7 @@ dependencies:
   connectivity_plus: ^6.0.0
   permission_handler: ^11.3.0
   android_intent_plus: ^4.0.3
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
