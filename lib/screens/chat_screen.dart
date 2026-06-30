@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_tts/flutter_tts.dart';
 import '../services/brain_service.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -22,6 +24,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   bool get _isCollapsed => _messages.length > 1;
 
+  // ---------------------------------------------------------
+  // VOICE: speech-to-text (listening) + flutter_tts (speaking)
+  // ---------------------------------------------------------
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  final FlutterTts _tts = FlutterTts();
+  bool _speechAvailable = false;
+  bool _isListening = false;
+  bool _voiceOutputOn = true; // Vyshu speaks her replies by default
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +41,76 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 350),
     );
     _avatarSize = CurvedAnimation(parent: _collapseController, curve: Curves.easeInOut);
+    _initSpeech();
+    _initTts();
     _addMessage('vyshu', _greeting());
+  }
+
+  Future<void> _initSpeech() async {
+    _speechAvailable = await _speech.initialize(
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          if (mounted) setState(() => _isListening = false);
+        }
+      },
+      onError: (error) {
+        if (mounted) setState(() => _isListening = false);
+        _showSnack('Voice input error: ${error.errorMsg}');
+      },
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _initTts() async {
+    await _tts.setLanguage('en-IN');
+    await _tts.setSpeechRate(0.48);
+    await _tts.setPitch(1.05);
+  }
+
+  Future<void> _startListening() async {
+    if (!_speechAvailable) {
+      _showSnack('Voice input not available — check microphone permission in Settings.');
+      return;
+    }
+    if (_isListening) {
+      await _speech.stop();
+      setState(() => _isListening = false);
+      return;
+    }
+
+    setState(() => _isListening = true);
+    await _speech.listen(
+      onResult: (result) {
+        setState(() {
+          _input.text = result.recognizedWords;
+        });
+        if (result.finalResult && result.recognizedWords.trim().isNotEmpty) {
+          _sendMessage();
+        }
+      },
+      listenFor: const Duration(seconds: 20),
+      pauseFor: const Duration(seconds: 3),
+      partialResults: true,
+    );
+  }
+
+  Future<void> _speak(String text) async {
+    if (!_voiceOutputOn) return;
+    // Strip emojis/markdown-ish symbols so TTS doesn't try to pronounce them
+    final clean = text.replaceAll(RegExp(r'[*_~`]'), '');
+    await _tts.stop();
+    await _tts.speak(clean);
+  }
+
+  void _toggleVoiceOutput() {
+    setState(() => _voiceOutputOn = !_voiceOutputOn);
+    if (!_voiceOutputOn) _tts.stop();
+    _showSnack(_voiceOutputOn ? 'Voice replies on' : 'Voice replies off — text only');
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _greeting() {
@@ -59,6 +139,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         );
       }
     });
+    if (role == 'vyshu') {
+      _speak(text);
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -158,6 +241,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       ],
                     ),
                   ],
+                ),
+              ),
+              // Voice output toggle — lets Teja silence her per plan item #13
+              IconButton(
+                onPressed: _toggleVoiceOutput,
+                icon: Icon(
+                  _voiceOutputOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                  color: const Color(0xFF8FD3FF),
+                  size: 20,
                 ),
               ),
               GestureDetector(
@@ -261,6 +353,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _input.dispose();
     _scroll.dispose();
     _collapseController.dispose();
+    _speech.stop();
+    _tts.stop();
     super.dispose();
   }
 
@@ -285,6 +379,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 },
               ),
             ),
+            if (_isListening)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.graphic_eq, color: Color(0xFF1E63E0), size: 16),
+                    SizedBox(width: 6),
+                    Text('Listening...',
+                        style: TextStyle(color: Color(0xFF1E63E0), fontSize: 12)),
+                  ],
+                ),
+              ),
             Container(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
               decoration: const BoxDecoration(
@@ -294,21 +401,26 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Voice mode coming soon')),
-                      );
-                    },
+                    onTap: _startListening,
                     child: Container(
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF14142A),
-                        border: Border.all(color: const Color(0xFF2A2A4A)),
+                        color: _isListening
+                            ? const Color(0xFF1E63E0)
+                            : const Color(0xFF14142A),
+                        border: Border.all(
+                          color: _isListening
+                              ? const Color(0xFF1E63E0)
+                              : const Color(0xFF2A2A4A),
+                        ),
                       ),
-                      child: const Icon(Icons.mic_none_rounded,
-                          color: Color(0xFF8FD3FF), size: 20),
+                      child: Icon(
+                        _isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                        color: _isListening ? Colors.white : const Color(0xFF8FD3FF),
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -318,7 +430,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       style: const TextStyle(color: Colors.white, fontSize: 15),
                       onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
-                        hintText: 'Message Vyshu',
+                        hintText: _isListening ? 'Listening...' : 'Message Vyshu',
                         hintStyle: const TextStyle(color: Colors.white38),
                         filled: true,
                         fillColor: const Color(0xFF14142A),
