@@ -7,4 +7,4 @@
     android:canPerformGestures="true"
     android:canRequestFilterKeyEvents="false"
     android:notificationTimeout="100"
-    android:description="Lets Vyshu AI open apps, tap Quick Settings tiles, and assist with on-screen actions you ask for." />
+    android:description="@string/accessibility_service_description"
