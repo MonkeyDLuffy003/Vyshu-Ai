@@ -1,6 +1,7 @@
 package com.vyshu.ai // TODO: change to match your actual applicationId in build.gradle
 
 import android.media.AudioManager
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -18,6 +19,21 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+
+            // FIX: openAccessibilitySettings must be handled BEFORE the
+            // service-null check below — this is the exact method the
+            // Control Panel's "Tap to enable" button calls, and its whole
+            // purpose is to work even when the service is NOT yet enabled
+            // (that's what the user is trying to fix by tapping it).
+            // Previously this case didn't exist at all, so Dart's call
+            // fell through to MissingPluginException instead of ever
+            // reaching this handler.
+            if (call.method == "openAccessibilitySettings") {
+                startActivity(android.content.Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                result.success(true)
+                return@setMethodCallHandler
+            }
+
             val service = VyshuAccessibilityService.instance
             if (service == null) {
                 // Accessibility service not enabled yet — every action needs it.
