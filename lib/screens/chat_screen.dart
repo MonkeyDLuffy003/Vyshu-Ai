@@ -135,11 +135,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   /// Strips ALL tool tags (not just STICKER) before speaking, so Vyshu
   /// never reads "tool open whatsapp" out loud.
   Future<void> _speak(String text) async {
-    if (!_voiceOutputOn) return;
-    final clean = text.replaceAll(_anyToolTag, '').replaceAll(RegExp(r'[*_~`]'), '').trim();
-    if (clean.isEmpty) return;
-    await _tts.stop();
-    await _tts.speak(clean);
+  if (!_voiceOutputOn) return;
+  final noEmoji = text.replaceAll(
+    RegExp(
+      r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]',
+      unicode: true,
+    ),
+    '',
+  );
+  final clean = noEmoji.replaceAll(_anyToolTag, '').replaceAll(RegExp(r'[*_~`]'), '').trim();
+  if (clean.isEmpty) return;
+  await _tts.stop();
+  await _tts.speak(clean);
   }
 
   void _toggleVoiceOutput() {
