@@ -1,0 +1,8 @@
+{
+  "name": "Vyshu AI",
+  "description": "Smart, warm, multilingual personal AI Secretary with voice interaction, hardware controls, 18 languages, and task automation.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
