@@ -507,57 +507,148 @@ export const VirtualRoom: React.FC<VirtualRoomProps> = ({
               </div>
             )}
 
-            {/* Central Vyshu Holographic Presence with Character Reference & Warm Glow */}
-            <div
-              className="relative group cursor-pointer"
-              onClick={() => {
-                triggerInterference('RESONANCE SYNC');
-                audioService.speak(
-                  mode === 'HOME'
-                    ? 'I am right here with you in the room, Teja!'
-                    : 'All Android systems synchronized, Teja sir.',
-                  'en-IN'
-                );
-              }}
-            >
-              {/* Outer Gyroscope Rings */}
-              <div className="absolute -inset-6 rounded-full border border-cyan-400/20 border-dashed animate-spin-slow pointer-events-none" />
-              <div className="absolute -inset-12 rounded-full border border-purple-500/20 animate-reverse-spin pointer-events-none" />
-
-              {/* Character Visual: Vyshu's Authentic Portrait in Red Beret */}
-              <div className="relative w-44 h-60 sm:w-56 sm:h-72 rounded-3xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_40px_rgba(0,204,255,0.35)] bg-[#070b18] p-1">
-                <img
-                  src="/assets/images/vyshu_avatar.png"
-                  alt="Vyshu AI in Virtual Room"
-                  className="w-full h-full object-cover rounded-2xl"
-                />
-
-                {/* Scanline & ambient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-cyan-500/20 pointer-events-none" />
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,204,255,0.12)_50%)] bg-[length:100%_4px] pointer-events-none" />
-
-                {/* Room status badge */}
-                <div className="absolute bottom-2 left-2 right-2 bg-[#050814]/85 backdrop-blur-md py-1.5 px-3 rounded-xl border border-cyan-500/30 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-white flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Vyshu AI</span>
-                  </span>
-                  <span className="text-[9px] text-cyan-400 font-mono">
-                    {mode === 'HOME' ? 'Cozy Companion' : 'Executive'}
-                  </span>
+            {/* 3D Holographic Launcher & Room Books Shelf Layout */}
+            <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+              {/* Left Column: Interactive 3D Android Library Books Grid (Your Apps = Her Books) */}
+              <div className="md:col-span-4 bg-[#070b18]/85 border border-cyan-500/30 rounded-2xl p-3.5 backdrop-blur-md glow-cyan shadow-xl order-2 md:order-1">
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs font-extrabold text-white tracking-wider">VYSHU'S LIBRARY</span>
+                  </div>
+                  <button
+                    onClick={() => setViewMode('library-bookshelf')}
+                    className="text-[10px] text-cyan-400 font-bold hover:underline"
+                  >
+                    View All ({books.length})
+                  </button>
+                </div>
+                <div className="text-[10px] text-slate-400 mb-2 italic">
+                  "Every app is a book on Vyshu's shelf. Just say what you need."
+                </div>
+                {/* 6 Core Quick Launch Books */}
+                <div className="grid grid-cols-3 gap-2">
+                  {books.slice(0, 6).map((b) => (
+                    <button
+                      key={b.id}
+                      onClick={() => handleLaunchBook(b)}
+                      className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-400/60 hover:bg-cyan-950/30 transition group text-center"
+                    >
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center mb-1 text-white shadow-md transition transform group-hover:scale-110"
+                        style={{ backgroundColor: `${b.spineColor}33`, borderColor: b.spineColor, borderWidth: '1px' }}
+                      >
+                        {renderBookIcon(b.icon)}
+                      </div>
+                      <span className="text-[10px] font-semibold text-slate-200 truncate w-full">
+                        {b.appName.split('/')[0].trim()}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            {/* Quick Interactive Room Shortcuts (Workstation, Library Bookshelf, Lounge) */}
-            <div className="mt-4 flex items-center gap-2">
-              <button
-                onClick={() => setViewMode('library-bookshelf')}
-                className="px-3 py-1.5 rounded-xl bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-xs font-bold hover:bg-cyan-500/30 transition flex items-center gap-1.5 glow-cyan"
-              >
-                <BookOpen className="w-4 h-4 text-cyan-400" />
-                <span>Open Library Shelf ({books.length} Books)</span>
-              </button>
+              {/* Center Column: Central Vyshu Holographic Presence */}
+              <div className="md:col-span-4 flex flex-col items-center justify-center order-1 md:order-2">
+                <div
+                  className="relative group cursor-pointer"
+                  onClick={() => {
+                    triggerInterference('RESONANCE SYNC');
+                    audioService.speak(
+                      mode === 'HOME'
+                        ? 'I am right here with you in your virtual room, Teja!'
+                        : 'All Android operating layers synchronized, Teja sir.',
+                      'en-IN'
+                    );
+                  }}
+                >
+                  {/* Outer Gyroscope Rings */}
+                  <div className="absolute -inset-6 rounded-full border border-cyan-400/20 border-dashed animate-spin-slow pointer-events-none" />
+                  <div className="absolute -inset-12 rounded-full border border-purple-500/20 animate-reverse-spin pointer-events-none" />
+
+                  {/* Character Visual: Vyshu's Authentic Portrait in Red Beret */}
+                  <div className="relative w-44 h-60 sm:w-52 sm:h-68 rounded-3xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_40px_rgba(0,204,255,0.4)] bg-[#070b18] p-1">
+                    <img
+                      src="/assets/images/vyshu_avatar.png"
+                      alt="Vyshu AI in Virtual Room"
+                      className="w-full h-full object-cover rounded-2xl"
+                    />
+
+                    {/* Scanline & ambient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-cyan-500/20 pointer-events-none" />
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,204,255,0.12)_50%)] bg-[length:100%_4px] pointer-events-none" />
+
+                    {/* Room status badge */}
+                    <div className="absolute bottom-2 left-2 right-2 bg-[#050814]/85 backdrop-blur-md py-1.5 px-3 rounded-xl border border-cyan-500/30 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-white flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Vyshu AI</span>
+                      </span>
+                      <span className="text-[9px] text-cyan-400 font-mono">
+                        {mode === 'HOME' ? 'Cozy Companion' : 'Executive'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3D Holo-Plate Base */}
+                <div className="w-36 h-4 mt-2 rounded-full bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent blur-xs border-b border-cyan-400" />
+              </div>
+
+              {/* Right Column: Live Android Holographic Notification & OS State Panel */}
+              <div className="md:col-span-4 bg-[#070b18]/85 border border-cyan-500/30 rounded-2xl p-3.5 backdrop-blur-md glow-cyan shadow-xl order-3">
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs font-extrabold text-white tracking-wider">PHONE HUD & NOTIFICATIONS</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-emerald-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    ONLINE
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                  <div className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 flex items-start gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 text-xs">
+                      💬
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-white">WhatsApp</span>
+                        <span className="text-[9px] text-slate-500">Just now</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 truncate">Mom: Take care beta ❤️</p>
+                    </div>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 flex items-start gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 text-xs">
+                      ▶️
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-white">YouTube</span>
+                        <span className="text-[9px] text-slate-500">10m ago</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 truncate">New tech drops in AI robotics</p>
+                    </div>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 flex items-start gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 text-xs">
+                      🛡️
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-cyan-300">Call Shield</span>
+                        <span className="text-[9px] text-slate-500">Active</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 truncate">Spam blocker armed & identity masked</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         ) : (

@@ -32,29 +32,6 @@ jobs:
           chmod +x android/gradlew
           rm -rf temp_project
 
-      - name: Fix AGP Namespace for Third-Party Plugins
-        run: |
-          # Android Gradle Plugin 8+ requires a namespace in every module
-          # Older packages or flutter_background_service_android may miss it.
-          # We ensure root android/build.gradle configures missing namespaces automatically:
-          cat << 'EOF' >> android/build.gradle
-
-          subprojects {
-              afterEvaluate { project ->
-                  if (project.hasProperty("android")) {
-                      if (project.android.namespace == null) {
-                          project.android.namespace = project.group ?: "com.plugin.${project.name.replace('-', '_')}"
-                      }
-                  }
-              }
-          }
-          EOF
-
-      - name: Verify our committed build.gradle.kts is in place
-        run: |
-          echo "===== android/app/build.gradle.kts (should show compileSdk = 36) ====="
-          cat android/app/build.gradle.kts
-
       - name: Get Dependencies
         run: flutter pub get
 
