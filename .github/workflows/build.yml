@@ -35,6 +35,21 @@ jobs:
       - name: Get Dependencies
         run: flutter pub get
 
+      - name: Configure Keystore for Play Protect Safe Release
+        run: |
+          keytool -genkey -v -keystore android/app/release-keystore.jks \
+            -alias vyshukey -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass vyshupassword -keypass vyshupassword \
+            -dname "CN=Vyshu AI, OU=AI Native, O=Teja Swaroop, L=Bengaluru, S=KA, C=IN"
+          
+          # Inject release signing config into android/app/build.gradle
+          cat << 'EOF' > android/key.properties
+          storePassword=vyshupassword
+          keyPassword=vyshupassword
+          keyAlias=vyshukey
+          storeFile=release-keystore.jks
+          EOF
+
       - name: Build APK
         run: flutter build apk --release --split-per-abi --dart-define=DEFAULT_GEMINI_KEY=${{ secrets.DEFAULT_GEMINI_KEY }}
 

@@ -163,9 +163,9 @@ class _VirtualRoomScreenState extends State<VirtualRoomScreen> with SingleTicker
             margin: const EdgeInsets.only(right: 12),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.emerald.withOpacity(0.15),
+              color: const Color(0xFF10B981).withOpacity(0.15),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.emerald.withOpacity(0.5)),
+              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.5)),
             ),
             child: const Row(
               children: [
