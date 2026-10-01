@@ -69,13 +69,16 @@ BEHAVIOR RULES:
 - When invoking tools or operating hardware/bots, announce the action with effortless confidence (e.g. "Right away, ${ownerSalutation}. Powering up the torch.", "Deploying Vaani for your playlist now."). Never utter the literal word "tool tag".
 
 TOOLS:
-If the user asks to perform a system action, include the corresponding tool tag at the END of your response.
-Available tool tags:
+If the user asks to perform an action or run an Android app, include the corresponding tool tag at the END of your response.
+You operate as an AI-native interface layer over Android:
+- [TOOL: LAUNCH_BOOK:bookId|query] (e.g. [TOOL: LAUNCH_BOOK:book-youtube|] or [TOOL: LAUNCH_BOOK:book-spotify|chill vibes] or [TOOL: LAUNCH_BOOK:book-gallery|])
+- [TOOL: OPEN_LIBRARY] (opens Vyshu Library of Android Books)
+- [TOOL: OPEN_VIRTUAL_ROOM] (opens the 3D Virtual Room)
 - [TOOL: OPEN_YOUTUBE]
 - [TOOL: OPEN_SPOTIFY]
 - [TOOL: OPEN_WHATSAPP]
 - [TOOL: OPEN_DISCORD]
-- [TOOL: OPEN_APP:appName] (opens ANY app, e.g. Instagram, Maps, Camera, Calculator)
+- [TOOL: OPEN_APP:appName] (opens ANY app, e.g. Instagram, Maps, Camera, Calculator, Gallery, Files)
 - [TOOL: SEND_WHATSAPP:contactName|message] (pre-fills WhatsApp chat)
 - [TOOL: CALL_CONTACT:contactName] (places call to contact)
 - [TOOL: SET_ALARM:HH:MM]
@@ -97,7 +100,7 @@ Available tool tags:
 - [TOOL: VAANI_OPEN_APK] (opens or connects to Vaani Music Bot APK)
 - [TOOL: STICKER:name] (e.g. happy, thumbsup, hi, excited, celebrate, calm, slipper1, gun1)
 
-Example: "Sure, turning on the torch for you! [TOOL: TORCH_ON]"
+Example: "Opening YouTube for you now, Teja! [TOOL: LAUNCH_BOOK:book-youtube|]"
 `;
   }
 
@@ -322,6 +325,58 @@ Example: "Sure, turning on the torch for you! [TOOL: TORCH_ON]"
     // 11. Fitness inquiry
     if (lower.includes('workout') || lower.includes('fitness') || lower.includes('exercise') || lower.includes('consistency')) {
       return `You have been working out consistently for 4 consecutive days now, ${salutation}! Consistency rate is looking great at 100%. Keep up the momentum!`;
+    }
+
+    // 11b. Virtual Room & AI Interference Trigger
+    if (
+      lower.includes('virtual room') ||
+      lower.includes('open room') ||
+      lower.includes('3d room') ||
+      lower.includes('hologram room') ||
+      lower.includes('interference')
+    ) {
+      return `Opening your 3D Virtual Room and initializing holographic interference matrix, ${salutation}! [TOOL: OPEN_VIRTUAL_ROOM]`;
+    }
+
+    // 11c. Library / Android Book Openers
+    if (lower.includes('library') || lower.includes('open library') || lower.includes('show apps') || lower.includes('all apps')) {
+      return `Accessing your Android Library Books, ${salutation}. [TOOL: OPEN_LIBRARY]`;
+    }
+
+    // Dynamic intent: Photos / Memories
+    if (lower.includes('photos') || lower.includes('gallery') || lower.includes('pictures') || lower.includes('images') || lower.includes('memories')) {
+      return `Retrieving your Memories Book and launching Gallery, ${salutation}. [TOOL: LAUNCH_BOOK:book-gallery|]`;
+    }
+
+    // Dynamic intent: Camera
+    if (lower.includes('camera') || lower.includes('take photo') || lower.includes('take picture') || lower.includes('selfie')) {
+      return `Deploying Camera Book for immediate capture, ${salutation}. [TOOL: LAUNCH_BOOK:book-camera|]`;
+    }
+
+    // Dynamic intent: Calendar / Agenda
+    if (lower.includes('calendar') || lower.includes('schedule') || lower.includes('agenda') || lower.includes('reminders')) {
+      return `Opening your Planning Book & Calendar, ${salutation}. [TOOL: LAUNCH_BOOK:book-calendar|]`;
+    }
+
+    // Dynamic intent: Navigation / Maps
+    if (lower.includes('maps') || lower.includes('directions') || lower.includes('navigate to') || lower.includes('where is')) {
+      const dest = lower.replace(/open|maps|directions|to|navigate|where is/g, '').trim();
+      return `Consulting Navigation Book for ${dest || 'current location'}, ${salutation}. [TOOL: LAUNCH_BOOK:book-maps|${dest}]`;
+    }
+
+    // Dynamic intent: Study / Focus / Work
+    if (lower.includes('study') || lower.includes('work') || lower.includes('focus mode') || lower.includes('learn')) {
+      return `Activating Study & Work Book. Distractions suppressed, ${salutation}. [TOOL: LAUNCH_BOOK:book-study|]`;
+    }
+
+    // Dynamic intent: Files / Documents
+    if (lower.includes('files') || lower.includes('documents') || lower.includes('storage') || lower.includes('downloads')) {
+      return `Opening Documents Book and Android File Manager, ${salutation}. [TOOL: LAUNCH_BOOK:book-files|]`;
+    }
+
+    // Dynamic intent: Settings
+    if (lower.includes('settings') || lower.includes('system settings') || lower.includes('device configuration')) {
+      return `Opening System Book and Android Device Settings, ${salutation}. [TOOL: LAUNCH_BOOK:book-settings|]`;
     }
 
     // 12. Web search

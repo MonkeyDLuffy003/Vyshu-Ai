@@ -29,11 +29,12 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
 
-    <!-- FIX: needed for background wake-word listening (feature #13/#5 bug).
-         Without these two, a persistent background service is not possible
-         at all on modern Android — this was completely missing before. -->
+    <!-- Permissions for Android Memory Protection & Launcher Status -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <!-- FIX: legacy storage permissions barely work on Android 13+ for
          media access. Replaced/supplemented with the granular media
@@ -85,8 +86,20 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.HOME"/>
+                <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
+
+        <!-- Background Service for Memory Protection & Continuous AI Listening -->
+        <service
+            android:name="id.flutter.flutter_background_service.BackgroundService"
+            android:foregroundServiceType="specialUse"
+            android:exported="true">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Vyshu AI Continuous Memory and Intent Monitoring"/>
+        </service>
 
         <service
             android:name=".VyshuAccessibilityService"

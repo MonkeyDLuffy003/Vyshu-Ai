@@ -34,10 +34,12 @@ import { storageService } from '../services/storageService';
 import { audioService } from '../services/audioService';
 import { vaaniBotService } from '../services/vaaniBotService';
 import { vyshuActivationService } from '../services/vyshuActivationService';
+import { androidCapabilityService } from '../services/androidCapabilityService';
 import { ChatMessage, VyshuCustomization, CustomEmoji, StickerPack } from '../types';
 
 interface ChatScreenProps {
   onOpenFeatures: (tab?: any) => void;
+  onOpenVirtualRoom?: () => void;
   externalPrompt?: string;
   onClearExternalPrompt?: () => void;
 }
@@ -59,6 +61,7 @@ const STICKERS: Record<string, { label: string; emoji: string }> = {
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({
   onOpenFeatures,
+  onOpenVirtualRoom,
   externalPrompt,
   onClearExternalPrompt,
 }) => {
@@ -241,6 +244,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     } else if (toolText.includes('[TOOL: SEND_SMS:')) {
       const match = toolText.match(/\[TOOL: SEND_SMS:(.+?)\]/);
       vyshuActivationService.launchAppWithIntent('sms', undefined, match ? match[1] : undefined);
+    } else if (toolText.includes('[TOOL: OPEN_VIRTUAL_ROOM]')) {
+      if (onOpenVirtualRoom) {
+        onOpenVirtualRoom();
+      }
+    } else if (toolText.includes('[TOOL: OPEN_LIBRARY]')) {
+      if (onOpenVirtualRoom) {
+        onOpenVirtualRoom();
+      }
+    } else if (toolText.includes('[TOOL: LAUNCH_BOOK:')) {
+      const match = toolText.match(/\[TOOL: LAUNCH_BOOK:(.+?)(?:\|(.*))?\]/);
+      if (match) {
+        const bookId = match[1].trim();
+        const paramQuery = match[2] ? match[2].trim() : undefined;
+        androidCapabilityService.launchBook(bookId, { query: paramQuery });
+      }
+    } else if (toolText.includes('[TOOL: OPEN_APP:')) {
+      const match = toolText.match(/\[TOOL: OPEN_APP:(.+?)\]/);
+      if (match && match[1]) {
+        const appName = match[1].trim();
+        const matchedBook = androidCapabilityService.matchIntentToBook(appName);
+        if (matchedBook) {
+          androidCapabilityService.launchBook(matchedBook);
+        } else {
+          vyshuActivationService.launchAppWithIntent(appName);
+        }
+      }
     }
   };
 
@@ -597,8 +626,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             </div>
           </div>
 
-          {/* Quick controls: Studio Theme, Voice Reply, Hands-free, Mode */}
+          {/* Quick controls: Virtual Room, Studio Theme, Voice Reply, Hands-free, Mode */}
           <div className="flex items-center space-x-1.5">
+            {/* 3D Virtual Room Trigger */}
+            {onOpenVirtualRoom && (
+              <button
+                onClick={onOpenVirtualRoom}
+                title="Enter Vyshu Virtual Room & AI Hologram"
+                className="p-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/35 text-purple-300 transition flex items-center gap-1 glow-purple"
+              >
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span className="hidden md:inline text-[11px] font-bold">Room</span>
+              </button>
+            )}
+
             {/* Customization Studio Button */}
             <button
               onClick={() => onOpenFeatures('customization')}

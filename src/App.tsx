@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SplashScreen } from './components/SplashScreen';
 import { OnboardingPermissions } from './components/OnboardingPermissions';
 import { ChatScreen } from './components/ChatScreen';
+import { VirtualRoom } from './components/VirtualRoom';
 import { ControlScreen } from './components/ControlScreen';
 import { VaultScreen } from './components/VaultScreen';
 import { BottomNav } from './components/BottomNav';
@@ -11,7 +12,7 @@ import { storageService } from './services/storageService';
 export const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [isOnboarded, setIsOnboarded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'vyshu' | 'control' | 'vault'>('vyshu');
+  const [activeTab, setActiveTab] = useState<'vyshu' | 'room' | 'control' | 'vault'>('vyshu');
   const [isFeaturesHubOpen, setIsFeaturesHubOpen] = useState(false);
   const [initialFeatureTab, setInitialFeatureTab] = useState<any>('languages');
   const [chatPromptQuery, setChatPromptQuery] = useState<string | undefined>(undefined);
@@ -48,8 +49,16 @@ export const App: React.FC = () => {
         {activeTab === 'vyshu' && (
           <ChatScreen
             onOpenFeatures={handleOpenHub}
+            onOpenVirtualRoom={() => setActiveTab('room')}
             externalPrompt={chatPromptQuery}
             onClearExternalPrompt={() => setChatPromptQuery(undefined)}
+          />
+        )}
+
+        {activeTab === 'room' && (
+          <VirtualRoom
+            onOpenFeatures={handleOpenHub}
+            onSwitchToChat={() => setActiveTab('vyshu')}
           />
         )}
 
