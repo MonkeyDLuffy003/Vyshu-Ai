@@ -32,6 +32,16 @@ class VyshuMemory {
     return _box!;
   }
 
+  /// Save interaction turn into 14-day memory box
+  static Future<void> saveInteraction(String prompt, String response, [Map<String, dynamic>? metadata]) async {
+    await saveMemory(prompt: prompt, response: response, metadata: metadata);
+  }
+
+  /// Get interaction history within 14 days
+  static Future<List<Map<String, dynamic>>> getHistory({int limit = 50}) async {
+    return getRecentMemories(limit: limit);
+  }
+
   /// Save a prompt and response pair along with a timestamp.
   /// 
   /// Structure stored in Hive:
