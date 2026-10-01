@@ -18,12 +18,13 @@ import { ContactsDialer } from './features/ContactsDialer';
 import { VoiceCalculator } from './features/VoiceCalculator';
 import { TaskManager } from './features/TaskManager';
 import { CustomizationStudio } from './features/CustomizationStudio';
+import { CallShield } from './features/CallShield';
 import { LanguageInfo } from '../types';
 
 interface FeaturesDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: 'languages' | 'fitness' | 'news' | 'music' | 'contacts' | 'calculator' | 'tasks' | 'customization';
+  initialTab?: 'languages' | 'fitness' | 'news' | 'music' | 'contacts' | 'calculator' | 'tasks' | 'customization' | 'callshield';
   onAskVyshu?: (query: string) => void;
 }
 
@@ -34,12 +35,13 @@ export const FeaturesDrawer: React.FC<FeaturesDrawerProps> = ({
   onAskVyshu,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'languages' | 'fitness' | 'news' | 'music' | 'contacts' | 'calculator' | 'tasks' | 'customization'
+    'languages' | 'fitness' | 'news' | 'music' | 'contacts' | 'calculator' | 'tasks' | 'customization' | 'callshield'
   >(initialTab);
 
   if (!isOpen) return null;
 
   const tabs = [
+    { id: 'callshield', label: 'AI Call Shield', icon: Sparkles },
     { id: 'customization', label: 'Studio & Themes', icon: Sparkles },
     { id: 'languages', label: '18 Languages', icon: Globe },
     { id: 'fitness', label: 'Fitness & Streak', icon: Dumbbell },
@@ -93,6 +95,8 @@ export const FeaturesDrawer: React.FC<FeaturesDrawerProps> = ({
 
         {/* Tab Content */}
         <div className="p-5 overflow-y-auto flex-1">
+          {activeTab === 'callshield' && <CallShield onAskVyshu={onAskVyshu} />}
+
           {activeTab === 'customization' && <CustomizationStudio />}
 
           {activeTab === 'languages' && (

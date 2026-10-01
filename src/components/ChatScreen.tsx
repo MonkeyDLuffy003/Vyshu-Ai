@@ -35,6 +35,7 @@ import { audioService } from '../services/audioService';
 import { vaaniBotService } from '../services/vaaniBotService';
 import { vyshuActivationService } from '../services/vyshuActivationService';
 import { androidCapabilityService } from '../services/androidCapabilityService';
+import { vyshuCallShieldService } from '../services/vyshuCallShieldService';
 import { ChatMessage, VyshuCustomization, CustomEmoji, StickerPack } from '../types';
 
 interface ChatScreenProps {
@@ -248,6 +249,30 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       if (onOpenVirtualRoom) {
         onOpenVirtualRoom();
       }
+    } else if (toolText.includes('[TOOL: OPEN_CALL_SHIELD]')) {
+      onOpenFeatures('callshield' as any);
+    } else if (toolText.includes('[TOOL: SCREEN_CALL:')) {
+      const match = toolText.match(/\[TOOL: SCREEN_CALL:(.+?)\]/);
+      const caller = match ? match[1].trim() : '+91 99120 44821';
+      vyshuCallShieldService.simulateIncomingCall(caller, 'Suspicious Robocaller', true);
+      onOpenFeatures('callshield' as any);
+    } else if (toolText.includes('[TOOL: OPEN_INSTAGRAM]')) {
+      const book = androidCapabilityService.getBooks().find((b) => b.id === 'book-instagram');
+      if (book) androidCapabilityService.launchBook(book);
+      else vyshuActivationService.launchAppWithIntent('instagram');
+    } else if (toolText.includes('[TOOL: OPEN_TELEGRAM]')) {
+      const book = androidCapabilityService.getBooks().find((b) => b.id === 'book-telegram');
+      if (book) androidCapabilityService.launchBook(book);
+      else vyshuActivationService.launchAppWithIntent('telegram');
+    } else if (toolText.includes('[TOOL: OPEN_NETFLIX]')) {
+      const book = androidCapabilityService.getBooks().find((b) => b.id === 'book-netflix');
+      if (book) androidCapabilityService.launchBook(book);
+    } else if (toolText.includes('[TOOL: OPEN_UBER]')) {
+      const book = androidCapabilityService.getBooks().find((b) => b.id === 'book-uber');
+      if (book) androidCapabilityService.launchBook(book);
+    } else if (toolText.includes('[TOOL: OPEN_AMAZON]')) {
+      const book = androidCapabilityService.getBooks().find((b) => b.id === 'book-amazon');
+      if (book) androidCapabilityService.launchBook(book);
     } else if (toolText.includes('[TOOL: OPEN_LIBRARY]')) {
       if (onOpenVirtualRoom) {
         onOpenVirtualRoom();
