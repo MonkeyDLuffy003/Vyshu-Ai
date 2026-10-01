@@ -12,7 +12,7 @@ import { storageService } from './services/storageService';
 export const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [isOnboarded, setIsOnboarded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'vyshu' | 'room' | 'control' | 'vault'>('vyshu');
+  const [activeTab, setActiveTab] = useState<'vyshu' | 'room' | 'control' | 'vault'>('room');
   const [isFeaturesHubOpen, setIsFeaturesHubOpen] = useState(false);
   const [initialFeatureTab, setInitialFeatureTab] = useState<any>('languages');
   const [chatPromptQuery, setChatPromptQuery] = useState<string | undefined>(undefined);
