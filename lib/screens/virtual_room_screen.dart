@@ -11,7 +11,7 @@ class VirtualRoomScreen extends StatefulWidget {
 
 class _VirtualRoomScreenState extends State<VirtualRoomScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animController;
-  String _vyshuDialogue = "Hi Teja! Welcome to our 3D Virtual Room & Android Library. Which book shall I open for you?";
+  String _vyshuDialogue = "Hi Teja! Welcome to your 3D Virtual Room. Your apps are organized and ready on the shelf. What would you like to open?";
   String _activeInterference = "RESONANCE ONLINE";
   bool _isInterfering = false;
 
@@ -320,7 +320,7 @@ class _VirtualRoomScreenState extends State<VirtualRoomScreen> with SingleTicker
 
               const SizedBox(height: 24),
 
-              // Android Library Bookshelf Header ("Your Apps = Her Books")
+              // Android Shelf Header (Organized App Launcher)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                 child: const Row(
@@ -328,17 +328,17 @@ class _VirtualRoomScreenState extends State<VirtualRoomScreen> with SingleTicker
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.menu_book, color: Color(0xFF00CCFF), size: 18),
+                        Icon(Icons.apps, color: Color(0xFF00CCFF), size: 18),
                         SizedBox(width: 8),
                         Text(
-                          "VYSHU'S LIBRARY SHELF",
+                          "APPS SHELF",
                           style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
                         ),
                       ],
                     ),
                     Text(
-                      "Your Apps = Her Books",
-                      style: TextStyle(color: Colors.white54, fontSize: 11, fontStyle: FontStyle.italic),
+                      "Organized by Category",
+                      style: TextStyle(color: Colors.white54, fontSize: 11),
                     ),
                   ],
                 ),
