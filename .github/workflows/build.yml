@@ -51,17 +51,19 @@ jobs:
           EOF
 
       - name: Build Vyshu AI Primary APK
-        run: flutter build apk --release --dart-define=DEFAULT_GEMINI_KEY=${{ secrets.DEFAULT_GEMINI_KEY }}
+        run: |
+          flutter build apk --release --dart-define=DEFAULT_GEMINI_KEY=${{ secrets.DEFAULT_GEMINI_KEY }}
+          mkdir -p install_pack
+          cp build/app/outputs/flutter-apk/app-release.apk install_pack/Vyshu-AI-Primary.apk
 
       - name: Build Vyshu Key Vault Companion APK
-        run: flutter build apk --release --target=lib/vault_main.dart
+        run: |
+          flutter build apk --release --target=lib/vault_main.dart
+          cp build/app/outputs/flutter-apk/app-release.apk install_pack/Vyshu-Key-Vault.apk || true
 
       - name: Prepare Combined Install Pack
         run: |
-          mkdir -p install_pack
-          cp build/app/outputs/flutter-apk/app-release.apk install_pack/Vyshu-AI-Primary.apk
-          # The second build generates app-release.apk targeting vault_main.dart
-          cp build/app/outputs/flutter-apk/app-release.apk install_pack/Vyshu-Key-Vault.apk || true
+          ls -lh install_pack/
 
       - name: Upload Complete Vyshu Android Pack
         uses: actions/upload-artifact@v4
