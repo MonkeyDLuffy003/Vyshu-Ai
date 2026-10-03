@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:convert';
 import 'assistant_service.dart';
+import '../vault/vault_registry.dart';
 
 const String _defaultGeminiKey = String.fromEnvironment('DEFAULT_GEMINI_KEY');
 
@@ -228,17 +229,53 @@ Available tool tags:
         };
       }
 
-      final keys = await _getGeminiKeys();
-      if (keys.isEmpty) {
+      await vyshuVaultManager.init();
+      final geminiCred = vyshuVaultManager.acquireActiveCredential('gemini');
+
+      // Use Vault's managed active credential if available, else fallback to prefs/default
+      String key = geminiCred?.rawKey ?? '';
+      String currentCredId = geminiCred?.id ?? '';
+
+      if (key.isEmpty) {
+        final keys = await _getGeminiKeys();
+        if (keys.isNotEmpty) {
+          if (_currentKeyIndex >= keys.length) _currentKeyIndex = 0;
+          key = keys[_currentKeyIndex];
+          _currentKeyIndex = (_currentKeyIndex + 1) % keys.length;
+        }
+      }
+
+      if (key.isEmpty) {
+        // Attempt Groq Cloud fallback before failing
+        final groqCred = vyshuVaultManager.acquireActiveCredential('groq');
+        if (groqCred != null && groqCred.rawKey.isNotEmpty) {
+          final groqResp = await http.post(
+            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${groqCred.rawKey}',
+            },
+            body: jsonEncode({
+              'model': 'llama-3.3-70b-versatile',
+              'messages': [
+                {'role': 'system', 'content': _personality},
+                {'role': 'user', 'content': userMessage}
+              ],
+            }),
+          ).timeout(const Duration(seconds: 15));
+
+          if (groqResp.statusCode == 200) {
+            final data = jsonDecode(groqResp.body);
+            final reply = data['choices']?[0]?['message']?['content'] ?? '';
+            return {'text': reply, 'id': DateTime.now().microsecondsSinceEpoch.toString()};
+          }
+        }
+
         return {
-          'text': "No Gemini keys found. Please go to Vault and add your API keys first.",
+          'text': "No active AI keys found. Open Vyshu Vault to configure your free Gemini or Groq keys.",
           'id': ''
         };
       }
-
-      if (_currentKeyIndex >= keys.length) _currentKeyIndex = 0;
-      final key = keys[_currentKeyIndex];
-      _currentKeyIndex = (_currentKeyIndex + 1) % keys.length;
 
       final history = await _loadHistory();
       final recentHistory = history.length > _maxHistoryTurns * 2
@@ -305,10 +342,18 @@ Available tool tags:
 
         return {'text': reply, 'id': turnId};
       } else if (response.statusCode == 429) {
-        if (keys.length > 1 && retryCount < keys.length) {
+        if (currentCredId.isNotEmpty) {
+          vyshuVaultManager.reportRateLimit(currentCredId, cooldownSeconds: 60);
+        }
+        if (retryCount < 3) {
           return await respond(userMessage, retryCount: retryCount + 1);
         }
-        return {'text': "I am getting too many requests! Give me a second to cool down.", 'id': ''};
+        return {'text': "API rate limits reached across available keys. Entering brief cooldown.", 'id': ''};
+      } else if (response.statusCode == 400 || response.statusCode == 403) {
+        if (response.body.contains('API_KEY_INVALID') && currentCredId.isNotEmpty) {
+          vyshuVaultManager.reportInvalidKey(currentCredId);
+        }
+        return {'text': "Gemini key invalid or expired. Please verify in Vyshu Vault.", 'id': ''};
       } else if (response.statusCode == 503) {
         if (retryCount < 2) {
           await Future.delayed(const Duration(seconds: 2));

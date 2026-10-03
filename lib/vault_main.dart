@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
+import 'vault/vault_registry.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await vyshuVaultManager.init();
   runApp(const VyshuVaultApp());
 }
 
@@ -12,7 +14,7 @@ class VyshuVaultApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Vyshu Key Vault',
+      title: 'Vyshu Vault',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF070914),
@@ -21,179 +23,326 @@ class VyshuVaultApp extends StatelessWidget {
           secondary: Color(0xFF7C4DFF),
         ),
       ),
-      home: const VaultScreen(),
+      home: const MultiProviderVaultScreen(),
     );
   }
 }
 
-class VaultScreen extends StatefulWidget {
-  const VaultScreen({super.key});
+class MultiProviderVaultScreen extends StatefulWidget {
+  const MultiProviderVaultScreen({super.key});
 
   @override
-  State<VaultScreen> createState() => _VaultScreenState();
+  State<MultiProviderVaultScreen> createState() => _MultiProviderVaultScreenState();
 }
 
-class _VaultScreenState extends State<VaultScreen> {
-  final TextEditingController _gemini1 = TextEditingController();
-  final TextEditingController _gemini2 = TextEditingController();
-  final TextEditingController _gemini3 = TextEditingController();
-  final TextEditingController _gemini4 = TextEditingController();
-  final TextEditingController _gemini5 = TextEditingController();
-  final TextEditingController _groq = TextEditingController();
-  final TextEditingController _discordToken = TextEditingController();
-
-  bool _obscure = true;
-  bool _isLoading = true;
+class _MultiProviderVaultScreenState extends State<MultiProviderVaultScreen> {
+  KeyCategory _selectedCategory = KeyCategory.ai;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadKeys();
+    _reload();
   }
 
-  Future<void> _loadKeys() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _gemini1.text = prefs.getString('gemini_1') ?? '';
-      _gemini2.text = prefs.getString('gemini_2') ?? '';
-      _gemini3.text = prefs.getString('gemini_3') ?? '';
-      _gemini4.text = prefs.getString('gemini_4') ?? '';
-      _gemini5.text = prefs.getString('gemini_5') ?? '';
-      _groq.text = prefs.getString('groq') ?? '';
-      _discordToken.text = prefs.getString('discord_token') ?? '';
-      _isLoading = false;
-    });
+  Future<void> _reload() async {
+    setState(() => _isLoading = true);
+    await vyshuVaultManager.init();
+    setState(() => _isLoading = false);
   }
 
-  Future<void> _saveKeys() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('gemini_1', _gemini1.text.trim());
-    await prefs.setString('gemini_2', _gemini2.text.trim());
-    await prefs.setString('gemini_3', _gemini3.text.trim());
-    await prefs.setString('gemini_4', _gemini4.text.trim());
-    await prefs.setString('gemini_5', _gemini5.text.trim());
-    await prefs.setString('groq', _groq.text.trim());
-    await prefs.setString('discord_token', _discordToken.text.trim());
+  void _showAddKeyDialog(ProviderSpec provider) {
+    final aliasController = TextEditingController(text: '${provider.displayName} Key');
+    final keyController = TextEditingController();
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1226),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Add Credential: ${provider.displayName}', style: const TextStyle(fontSize: 16, color: Color(0xFF00CCFF))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.shield_outlined, color: Colors.black, size: 20),
-            SizedBox(width: 10),
-            Text('API Keys Secured & Synced to Vyshu!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            Text(provider.freeTierSummary, style: const TextStyle(fontSize: 11, color: Colors.white70)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: aliasController,
+              decoration: const InputDecoration(
+                labelText: 'Key Label / Alias',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: keyController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'API Secret / Token',
+                border: OutlineInputBorder(),
+              ),
+            ),
           ],
         ),
-        backgroundColor: const Color(0xFF00CCFF),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
-  Widget _buildField(String label, TextEditingController controller, {String? hint}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: TextField(
-        controller: controller,
-        obscureText: _obscure,
-        style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          labelStyle: const TextStyle(color: Color(0xFF00CCFF), fontSize: 13),
-          hintStyle: const TextStyle(color: Colors.white38, fontSize: 11),
-          filled: true,
-          fillColor: const Color(0xFF0D1226),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF00CCFF))),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: const Color(0xFF00CCFF).withOpacity(0.3))),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF00CCFF), width: 2)),
-          prefixIcon: const Icon(Icons.key, color: Color(0xFF00CCFF), size: 18),
-        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00CCFF)),
+            onPressed: () async {
+              if (keyController.text.trim().isNotEmpty) {
+                await vyshuVaultManager.addCredential(
+                  providerId: provider.id,
+                  keyAlias: aliasController.text.trim(),
+                  rawKey: keyController.text.trim(),
+                );
+                Navigator.pop(ctx);
+                _reload();
+              }
+            },
+            child: const Text('Save & Encrypt', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final providers = VyshuVaultRegistry.SUPPORTED_PROVIDERS.where((p) => p.category == _selectedCategory).toList();
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF080D20),
-        elevation: 0,
+        backgroundColor: const Color(0xFF0A0F24),
         title: const Row(
           children: [
-            Icon(Icons.vpn_key_rounded, color: Color(0xFF00CCFF), size: 22),
-            SizedBox(width: 10),
-            Text('Vyshu Vault', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+            Icon(Icons.shield_outlined, color: Color(0xFF00CCFF)),
+            SizedBox(width: 8),
+            Text('Vyshu Vault', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [
           IconButton(
-            icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: const Color(0xFF00CCFF)),
-            onPressed: () => setState(() => _obscure = !_obscure),
-            tooltip: 'Toggle Key Visibility',
+            icon: const Icon(Icons.refresh, color: Color(0xFF00CCFF)),
+            onPressed: _reload,
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF00CCFF)))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00CCFF).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF00CCFF).withOpacity(0.3)),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.security, color: Color(0xFF00CCFF), size: 24),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Separate secure storage for your Gemini, Groq, and Discord API keys. Encrypted and isolated on device.',
-                            style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
+      body: Column(
+        children: [
+          // Category Selector Tabs
+          Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+            color: const Color(0xFF0A0F24),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildCategoryChip(KeyCategory.ai, 'AI / LLM Brain', Icons.psychology),
+                _buildCategoryChip(KeyCategory.webSearch, 'Web Search', Icons.search),
+                _buildCategoryChip(KeyCategory.maps, 'Maps & GPS', Icons.map),
+                _buildCategoryChip(KeyCategory.image, 'Image AI', Icons.image),
+                _buildCategoryChip(KeyCategory.audio, 'Voice & Speech', Icons.mic),
+                _buildCategoryChip(KeyCategory.communication, 'Communication', Icons.chat),
+              ],
+            ),
+          ),
+
+          // Provider & Key List
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: providers.length,
+                    itemBuilder: (context, index) {
+                      final provider = providers[index];
+                      final creds = vyshuVaultManager.getCredentialsForProvider(provider.id);
+
+                      return Card(
+                        color: const Color(0xFF0E1530),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(color: const Color(0xFF00CCFF).withOpacity(0.2)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          provider.displayName,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          provider.freeTierSummary,
+                                          style: const TextStyle(fontSize: 11, color: Color(0xFF00CCFF)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF00CCFF).withOpacity(0.15),
+                                      foregroundColor: const Color(0xFF00CCFF),
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    ),
+                                    onPressed: () => _showAddKeyDialog(provider),
+                                    icon: const Icon(Icons.add, size: 16),
+                                    label: const Text('Add Key', style: TextStyle(fontSize: 12)),
+                                  ),
+                                ],
+                              ),
+                              const Divider(color: Colors.white12, height: 20),
+
+                              if (creds.isEmpty)
+                                const Text(
+                                  'No credentials in pool yet. Tap "Add Key" to enroll a free-tier key.',
+                                  style: TextStyle(fontSize: 12, color: Colors.white38),
+                                )
+                              else
+                                Column(
+                                  children: creds.map((c) => _buildKeyRow(c)).toList(),
+                                ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 20),
-                  const Text('GEMINI BRAIN KEYS (ROTATION POOL)', style: TextStyle(color: Color(0xFF00CCFF), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                  const SizedBox(height: 10),
-                  _buildField('Gemini Primary Key', _gemini1, hint: 'AI Studio Key 1'),
-                  _buildField('Gemini Key 2', _gemini2),
-                  _buildField('Gemini Key 3', _gemini3),
-                  _buildField('Gemini Key 4', _gemini4),
-                  _buildField('Gemini Key 5', _gemini5),
-                  const SizedBox(height: 16),
-                  const Text('BACKUP & COMPANION KEYS', style: TextStyle(color: Color(0xFF00CCFF), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                  const SizedBox(height: 10),
-                  _buildField('Groq Key (Fast Translations)', _groq),
-                  _buildField('Discord Bot Token', _discordToken),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed: _saveKeys,
-                      icon: const Icon(Icons.lock_reset, color: Colors.black),
-                      label: const Text('SAVE & LOCK VAULT', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00CCFF),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 6,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(KeyCategory cat, String label, IconData icon) {
+    final isSelected = _selectedCategory == cat;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        avatar: Icon(icon, size: 16, color: isSelected ? Colors.black : Colors.white70),
+        label: Text(label),
+        selected: isSelected,
+        selectedColor: const Color(0xFF00CCFF),
+        backgroundColor: const Color(0xFF131B3A),
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.black : Colors.white70,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 12,
+        ),
+        onSelected: (val) {
+          if (val) setState(() => _selectedCategory = cat);
+        },
+      ),
+    );
+  }
+
+  Widget _buildKeyRow(ManagedCredential cred) {
+    Color badgeColor;
+    String badgeText;
+
+    switch (cred.state) {
+      case RotationState.active:
+        badgeColor = Colors.greenAccent;
+        badgeText = 'ACTIVE';
+        break;
+      case RotationState.available:
+        badgeColor = const Color(0xFF00CCFF);
+        badgeText = 'AVAILABLE';
+        break;
+      case RotationState.cooldown:
+        badgeColor = Colors.orangeAccent;
+        badgeText = 'COOLDOWN';
+        break;
+      case RotationState.disabled:
+        badgeColor = Colors.grey;
+        badgeText = 'DISABLED';
+        break;
+      case RotationState.invalid:
+        badgeColor = Colors.redAccent;
+        badgeText = 'INVALID';
+        break;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF080C1E),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      cred.keyAlias,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: badgeColor.withOpacity(0.4)),
+                      ),
+                      child: Text(
+                        badgeText,
+                        style: TextStyle(color: badgeColor, fontSize: 9, fontWeight: FontWeight.bold),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  cred.maskedValue,
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.white54),
+                ),
+              ],
             ),
+          ),
+          IconButton(
+            icon: Icon(
+              cred.state == RotationState.disabled ? Icons.visibility_off : Icons.visibility,
+              size: 18,
+              color: Colors.white54,
+            ),
+            tooltip: 'Toggle Enable/Disable',
+            onPressed: () async {
+              await vyshuVaultManager.toggleCredentialState(cred.id);
+              _reload();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+            tooltip: 'Delete Key',
+            onPressed: () async {
+              await vyshuVaultManager.deleteCredential(cred.id);
+              _reload();
+            },
+          ),
+        ],
+      ),
     );
   }
 }
