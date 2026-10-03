@@ -74,6 +74,8 @@ Available tool tags:
 - [TOOL: SET_BRIGHTNESS:X] (0-255)
 - [TOOL: SET_VOLUME:X] (0-15)
 - [TOOL: SEARCH:query]
+- [TOOL: OPEN_MAPS:query]
+- [TOOL: NAVIGATE:destination]
 - [TOOL: SAVE_TASK:task]
 - [TOOL: GET_TASKS]
 - [TOOL: CLEAR_TASKS]

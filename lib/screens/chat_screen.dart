@@ -265,6 +265,25 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         final url = 'https://www.google.com/search?q=${Uri.encodeComponent(query)}';
         await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       }
+    } else if (text.contains('[TOOL: OPEN_MAPS:')) {
+      final match = RegExp(r'\[TOOL: OPEN_MAPS:(.+?)\]').firstMatch(text);
+      if (match != null) {
+        final loc = match.group(1)?.trim() ?? '';
+        final uri = Uri.parse('geo:0,0?q=${Uri.encodeComponent(loc)}');
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } else if (text.contains('[TOOL: NAVIGATE:')) {
+      final match = RegExp(r'\[TOOL: NAVIGATE:(.+?)\]').firstMatch(text);
+      if (match != null) {
+        final dest = match.group(1)?.trim() ?? '';
+        final uri = Uri.parse('google.navigation:q=${Uri.encodeComponent(dest)}');
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          final fallback = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(dest)}');
+          await launchUrl(fallback, mode: LaunchMode.externalApplication);
+        }
+      }
     } else if (text.contains('[TOOL: SAVE_TASK:')) {
       final match = RegExp(r'\[TOOL: SAVE_TASK:(.+)\]').firstMatch(text);
       if (match != null) {

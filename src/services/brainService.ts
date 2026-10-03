@@ -3,6 +3,8 @@ import { modeManager } from './assistant/ModeManager';
 import { memoryManager } from './assistant/MemoryManager';
 import { secretaryDataManager } from './assistant/SecretaryDataManager';
 import { toolExecutor } from './assistant/ToolExecutor';
+import { vyshuVaultManager } from './vault/VaultRegistry';
+import { geminiAdapter, groqAdapter } from './vault/ProviderAdapters';
 import { VyshuMode } from '../types/assistant';
 import { ChatMessage } from '../types';
 
@@ -166,69 +168,99 @@ Whenever Teja requests an action, append the structured action tag to the END of
       return { text: badCheck.warning || 'Warning!', id: turnId, sticker: badCheck.sticker };
     }
 
-    const keys = this.getActiveKeys();
+    const systemInstruction = this.assembleSystemContext(userMessage);
 
-    if (keys.length === 0 || !navigator.onLine) {
-      const offlineReply = this.getOfflineResponse(userMessage, currentMode);
-      return { text: offlineReply, id: turnId };
+    // 1. Try Gemini via Vault Active Key
+    const geminiCred = vyshuVaultManager.acquireActiveCredential('gemini');
+    let geminiKeyToUse = geminiCred?.rawKey;
+    let geminiCredId = geminiCred?.id;
+
+    if (!geminiKeyToUse) {
+      const keys = this.getActiveKeys();
+      if (keys.length > 0) {
+        if (this.currentKeyIndex >= keys.length) this.currentKeyIndex = 0;
+        geminiKeyToUse = keys[this.currentKeyIndex];
+        this.currentKeyIndex = (this.currentKeyIndex + 1) % keys.length;
+      }
     }
 
-    if (this.currentKeyIndex >= keys.length) this.currentKeyIndex = 0;
-    const currentKey = keys[this.currentKeyIndex];
-    this.currentKeyIndex = (this.currentKeyIndex + 1) % keys.length;
+    if (geminiKeyToUse && navigator.onLine) {
+      try {
+        const history = storageService.getChatHistory().slice(-8);
+        const contents = [
+          {
+            role: 'user',
+            parts: [{ text: systemInstruction }],
+          },
+          {
+            role: 'model',
+            parts: [{ text: `Understood. I am online as Teja's personal AI secretary and executive assistant in ${currentMode} mode.` }],
+          },
+          ...history.map((h: ChatMessage) => ({
+            role: h.role === 'user' ? 'user' : 'model',
+            parts: [{ text: h.text }],
+          })),
+          {
+            role: 'user',
+            parts: [{ text: userMessage }],
+          },
+        ];
 
-    try {
-      const history = storageService.getChatHistory().slice(-8);
-      const systemInstruction = this.assembleSystemContext(userMessage);
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKeyToUse}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents }),
+          signal: AbortSignal.timeout(16000),
+        });
 
-      const contents = [
-        {
-          role: 'user',
-          parts: [{ text: systemInstruction }],
-        },
-        {
-          role: 'model',
-          parts: [{ text: `Understood. I am online as Teja's personal AI secretary and executive assistant in ${currentMode} mode.` }],
-        },
-        ...history.map((h: ChatMessage) => ({
-          role: h.role === 'user' ? 'user' : 'model',
-          parts: [{ text: h.text }],
-        })),
-        {
-          role: 'user',
-          parts: [{ text: userMessage }],
-        },
-      ];
+        if (res.ok) {
+          const data = await res.json();
+          let candidate: string = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidate) {
+            const actionMatch = candidate.match(/\[ACTION:\s*[A-Z_]+(?::.*?)?\]/g);
+            if (actionMatch) {
+              actionMatch.forEach((act) => {
+                toolExecutor.executeTool(act);
+                candidate = candidate.replace(act, '').trim();
+              });
+            }
+            return { text: candidate.trim(), id: turnId };
+          }
+        } else if (res.status === 429) {
+          if (geminiCredId) vyshuVaultManager.reportRateLimit(geminiCredId, 60);
+        } else if (res.status === 400 || res.status === 403) {
+          const errBody = await res.text();
+          if (errBody.includes('API_KEY_INVALID') && geminiCredId) {
+            vyshuVaultManager.reportInvalidKey(geminiCredId);
+          }
+        }
+      } catch (e) {
+        console.warn('Gemini request failed, evaluating provider fallback...', e);
+      }
+    }
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${currentKey}`;
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents }),
-        signal: AbortSignal.timeout(18000),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        let candidate: string = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (candidate) {
-          const actionMatch = candidate.match(/\[ACTION:\s*[A-Z_]+(?::.*?)?\]/g);
+    // 2. Seamless Provider Fallback: Groq Cloud Free Tier (Llama 3.3 70B)
+    if (navigator.onLine) {
+      try {
+        const groqResult = await groqAdapter.execute(userMessage, systemInstruction);
+        if (groqResult.success && groqResult.data) {
+          let reply = groqResult.data;
+          const actionMatch = reply.match(/\[ACTION:\s*[A-Z_]+(?::.*?)?\]/g);
           if (actionMatch) {
             actionMatch.forEach((act) => {
               toolExecutor.executeTool(act);
-              candidate = candidate.replace(act, '').trim();
+              reply = reply.replace(act, '').trim();
             });
           }
-
-          return { text: candidate.trim(), id: turnId };
+          return { text: reply.trim(), id: turnId };
         }
+      } catch (e) {
+        console.warn('Groq fallback attempt failed', e);
       }
-
-      return { text: this.getOfflineResponse(userMessage, currentMode), id: turnId };
-    } catch {
-      return { text: this.getOfflineResponse(userMessage, currentMode), id: turnId };
     }
+
+    return { text: this.getOfflineResponse(userMessage, currentMode), id: turnId };
   }
 
   public deleteTurn(turnId: string): void {
