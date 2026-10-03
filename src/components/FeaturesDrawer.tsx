@@ -11,6 +11,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { LanguagesModal } from './features/LanguagesModal';
+import { SecretaryDashboard } from './features/SecretaryDashboard';
+import { AthleteModeView } from './features/AthleteModeView';
 import { FitnessTracker } from './features/FitnessTracker';
 import { NewsReader } from './features/NewsReader';
 import { MusicPlayer } from './features/MusicPlayer';
@@ -24,27 +26,29 @@ import { LanguageInfo } from '../types';
 interface FeaturesDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: 'languages' | 'fitness' | 'news' | 'music' | 'contacts' | 'calculator' | 'tasks' | 'customization' | 'callshield';
+  initialTab?: 'secretary' | 'athlete' | 'languages' | 'fitness' | 'news' | 'music' | 'contacts' | 'calculator' | 'tasks' | 'customization' | 'callshield';
   onAskVyshu?: (query: string) => void;
 }
 
 export const FeaturesDrawer: React.FC<FeaturesDrawerProps> = ({
   isOpen,
   onClose,
-  initialTab = 'languages',
+  initialTab = 'secretary',
   onAskVyshu,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'languages' | 'fitness' | 'news' | 'music' | 'contacts' | 'calculator' | 'tasks' | 'customization' | 'callshield'
+    'secretary' | 'athlete' | 'languages' | 'fitness' | 'news' | 'music' | 'contacts' | 'calculator' | 'tasks' | 'customization' | 'callshield'
   >(initialTab);
 
   if (!isOpen) return null;
 
   const tabs = [
+    { id: 'secretary', label: 'Executive Secretary', icon: Calendar },
+    { id: 'athlete', label: 'Athlete Coach', icon: Dumbbell },
     { id: 'callshield', label: 'AI Call Shield', icon: Sparkles },
     { id: 'customization', label: 'Studio & Themes', icon: Sparkles },
     { id: 'languages', label: '18 Languages', icon: Globe },
-    { id: 'fitness', label: 'Fitness & Streak', icon: Dumbbell },
+    { id: 'fitness', label: 'Quick Workout Log', icon: Dumbbell },
     { id: 'news', label: 'News & Audio', icon: Newspaper },
     { id: 'music', label: 'Vaani Music Bot', icon: Music },
     { id: 'contacts', label: 'Contacts & Calls', icon: Phone },
@@ -95,6 +99,10 @@ export const FeaturesDrawer: React.FC<FeaturesDrawerProps> = ({
 
         {/* Tab Content */}
         <div className="p-5 overflow-y-auto flex-1">
+          {activeTab === 'secretary' && <SecretaryDashboard onAskVyshu={onAskVyshu} />}
+
+          {activeTab === 'athlete' && <AthleteModeView onAskVyshu={onAskVyshu} />}
+
           {activeTab === 'callshield' && <CallShield onAskVyshu={onAskVyshu} />}
 
           {activeTab === 'customization' && <CustomizationStudio />}

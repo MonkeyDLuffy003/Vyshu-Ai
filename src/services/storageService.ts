@@ -286,6 +286,21 @@ export const storageService = {
     localStorage.setItem(KEYS.FITNESS, JSON.stringify(logs));
   },
 
+  // Athlete Profile & Progression System
+  getAthleteProfile(): any {
+    try {
+      const raw = localStorage.getItem('vyshu_athlete_profile');
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  },
+
+  saveAthleteProfile(profile: any): void {
+    localStorage.setItem('vyshu_athlete_profile', JSON.stringify(profile));
+  },
+
   // Contacts
   getContacts(): ContactItem[] {
     try {

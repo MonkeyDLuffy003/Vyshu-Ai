@@ -37,6 +37,7 @@ import { vyshuActivationService } from '../services/vyshuActivationService';
 import { androidCapabilityService } from '../services/androidCapabilityService';
 import { vyshuCallShieldService } from '../services/vyshuCallShieldService';
 import { ChatMessage, VyshuCustomization, CustomEmoji, StickerPack } from '../types';
+import { AssistantHUD } from './AssistantHUD';
 
 interface ChatScreenProps {
   onOpenFeatures: (tab?: any) => void;
@@ -713,6 +714,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* Assistant Schedule & Mode HUD */}
+      <AssistantHUD onSelectPrompt={(q) => handleSendMessage(q)} />
 
       {/* Suggested Quick Prompts */}
       <div className="p-2 px-4 bg-[#080814] border-b border-slate-800/40 flex items-center gap-2 overflow-x-auto no-scrollbar">

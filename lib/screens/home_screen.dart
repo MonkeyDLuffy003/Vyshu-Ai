@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'chat_screen.dart';
 import 'virtual_room_screen.dart';
+import 'athlete_screen.dart';
 import 'control_screen.dart';
 import 'settings_screen.dart';
 
@@ -17,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = const [
     ChatScreen(),
     VirtualRoomScreen(),
+    AthleteScreen(),
     ControlScreen(),
     SettingsScreen(),
   ];
@@ -43,6 +45,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.blur_on, color: Colors.white54),
             selectedIcon: Icon(Icons.blur_on, color: Color(0xFF00CCFF)),
             label: '3D Room',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fitness_center_outlined, color: Colors.white54),
+            selectedIcon: Icon(Icons.fitness_center, color: Color(0xFF00CCFF)),
+            label: 'Athlete',
           ),
           NavigationDestination(
             icon: Icon(Icons.dashboard_customize_outlined, color: Colors.white54),

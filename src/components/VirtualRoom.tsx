@@ -84,11 +84,36 @@ export const VirtualRoom: React.FC<VirtualRoomProps> = ({
     const savedVoice = storageService.getVoiceOutput();
     setVoiceOutput(savedVoice);
 
-    const greeting =
-      savedMode === 'HOME'
-        ? 'Hi Teja! Welcome to our Virtual Room & Android Library. Which capability or book shall I open for you?'
-        : 'Hi, Teja sir. Virtual Operations Chamber and Android Capability Library online. Standing by.';
+    const getDynamicGreeting = () => {
+      const hour = new Date().getHours();
+      const greetings =
+        savedMode === 'HOME'
+          ? hour < 12
+            ? [
+                "Morning, Teja. All systems are smooth. What's on your mind today?",
+                "Good morning, Teja. Everything is ready on your shelf whenever you need.",
+                "Morning, Teja. Ready when you are.",
+              ]
+            : hour < 17
+            ? [
+                "Good afternoon, Teja. How's the day treating you?",
+                "Afternoon, Teja. Running smoothly here. What are we diving into?",
+                "Right here with you, Teja. Say the word.",
+              ]
+            : [
+                "Hey Teja! How was your day?",
+                "Evening, Teja! What are we up to tonight?",
+                "Hey Teja, good to see you. How's everything going?",
+              ]
+          : [
+              "Executive protocols active, Teja sir. Standing by.",
+              "All operating layers synchronized, Teja sir. At your command.",
+              "System ready, Teja sir.",
+            ];
+      return greetings[Math.floor(Math.random() * greetings.length)];
+    };
 
+    const greeting = getDynamicGreeting();
     setSpeechText(greeting);
     if (savedVoice) {
       audioService.speak(greeting, 'en-IN');
@@ -172,10 +197,18 @@ export const VirtualRoom: React.FC<VirtualRoomProps> = ({
     setVyshuState('launching');
     triggerInterference(`LAUNCHING: ${book.appName.toUpperCase()}`);
 
-    const announcement =
+    const launchPhrases =
       mode === 'HOME'
-        ? `Opening ${book.bookTitle} (${book.appName}) for you now, Teja!`
-        : `Executing Android intent for ${book.appName}, Teja sir.`;
+        ? [
+            `Bringing up ${book.appName} now, Teja.`,
+            `Launching ${book.appName}.`,
+            `Opening ${book.appName} for you.`,
+          ]
+        : [
+            `Executing Android intent for ${book.appName}, Teja sir.`,
+            `Launching ${book.appName}, Teja sir.`,
+          ];
+    const announcement = launchPhrases[Math.floor(Math.random() * launchPhrases.length)];
 
     setSpeechText(announcement);
     if (voiceOutput) {
@@ -403,7 +436,7 @@ export const VirtualRoom: React.FC<VirtualRoomProps> = ({
             <div className="text-[11px] text-slate-400 flex items-center gap-1.5 font-mono">
               <span className="text-emerald-400">● LIVE ROOM</span>
               <span>•</span>
-              <span className="text-cyan-300">LIBRARY: {books.length} BOOKS</span>
+              <span className="text-cyan-300">APPS: {books.length} READY</span>
               <span>•</span>
               <span className="text-purple-300">{isLauncherMode ? 'HOME LAUNCHER' : 'ORCHESTRATOR'}</span>
             </div>
@@ -509,12 +542,12 @@ export const VirtualRoom: React.FC<VirtualRoomProps> = ({
 
             {/* 3D Holographic Launcher & Room Books Shelf Layout */}
             <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-              {/* Left Column: Interactive 3D Android Library Books Grid (Your Apps = Her Books) */}
+              {/* Left Column: Interactive 3D Android Apps Shelf Grid */}
               <div className="md:col-span-4 bg-[#070b18]/85 border border-cyan-500/30 rounded-2xl p-3.5 backdrop-blur-md glow-cyan shadow-xl order-2 md:order-1">
                 <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-extrabold text-white tracking-wider">VYSHU'S LIBRARY</span>
+                    <span className="text-xs font-extrabold text-white tracking-wider">APPS SHELF</span>
                   </div>
                   <button
                     onClick={() => setViewMode('library-bookshelf')}
@@ -523,8 +556,8 @@ export const VirtualRoom: React.FC<VirtualRoomProps> = ({
                     View All ({books.length})
                   </button>
                 </div>
-                <div className="text-[10px] text-slate-400 mb-2 italic">
-                  "Every app is a book on Vyshu's shelf. Just say what you need."
+                <div className="text-[10px] text-slate-400 mb-2">
+                  Organized applications ready on your shelf.
                 </div>
                 {/* 6 Core Quick Launch Books */}
                 <div className="grid grid-cols-3 gap-2">
@@ -554,12 +587,20 @@ export const VirtualRoom: React.FC<VirtualRoomProps> = ({
                   className="relative group cursor-pointer"
                   onClick={() => {
                     triggerInterference('RESONANCE SYNC');
-                    audioService.speak(
+                    const tapReplies =
                       mode === 'HOME'
-                        ? 'I am right here with you in your virtual room, Teja!'
-                        : 'All Android operating layers synchronized, Teja sir.',
-                      'en-IN'
-                    );
+                        ? [
+                            "Right here, Teja. All systems are smooth.",
+                            "Listening, Teja. What are we getting into?",
+                            "Ready when you are, Teja.",
+                          ]
+                        : [
+                            "Operating layers synchronized, Teja sir.",
+                            "Standing by, Teja sir.",
+                          ];
+                    const reply = tapReplies[Math.floor(Math.random() * tapReplies.length)];
+                    setSpeechText(reply);
+                    if (voiceOutput) audioService.speak(reply, 'en-IN');
                   }}
                 >
                   {/* Outer Gyroscope Rings */}

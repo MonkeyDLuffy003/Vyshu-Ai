@@ -162,12 +162,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   String _greeting() {
     final hour = DateTime.now().hour;
-    final timeGreeting = hour < 12
-        ? 'Good morning'
-        : hour < 17
-            ? 'Good afternoon'
-            : 'Good evening';
-    return "$timeGreeting, Teja. I'm online and ready whenever you need me.";
+    if (hour < 12) {
+      return "Morning, Teja. All systems are smooth. What's on your mind today?";
+    } else if (hour < 17) {
+      return "Good afternoon, Teja. How's the day treating you?";
+    } else {
+      return "Hey Teja! How was your day? What are we up to tonight?";
+    }
   }
 
   void _addMessage(String role, String text, {String turnId = '', String type = 'text', String path = ''}) {

@@ -11,7 +11,7 @@ class VirtualRoomScreen extends StatefulWidget {
 
 class _VirtualRoomScreenState extends State<VirtualRoomScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animController;
-  String _vyshuDialogue = "Hi Teja! Welcome to your 3D Virtual Room. Your apps are organized and ready on the shelf. What would you like to open?";
+  String _vyshuDialogue = "All systems synced, Teja. Whenever you're ready, let me know what we're tackling.";
   String _activeInterference = "RESONANCE ONLINE";
   bool _isInterfering = false;
 
@@ -97,7 +97,7 @@ class _VirtualRoomScreenState extends State<VirtualRoomScreen> with SingleTicker
     final title = book['title'] as String;
     _triggerInterference('LAUNCHING: ${title.toUpperCase()}');
     setState(() {
-      _vyshuDialogue = "Opening $title for you right now, Teja!";
+      _vyshuDialogue = "Bringing up $title now, Teja.";
     });
 
     try {
@@ -220,7 +220,7 @@ class _VirtualRoomScreenState extends State<VirtualRoomScreen> with SingleTicker
                 onTap: () {
                   _triggerInterference("RESONANCE SYNC");
                   setState(() {
-                    _vyshuDialogue = "I'm right here with you in the room, Teja! Your phone is completely at your command.";
+                    _vyshuDialogue = "Right here, Teja. Everything is calibrated and running smoothly.";
                   });
                 },
                 child: Stack(
