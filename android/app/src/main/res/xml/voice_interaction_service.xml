@@ -3,5 +3,4 @@
     android:sessionService="com.tejaswaroop.vyshu.VyshuVoiceInteractionSessionService"
     android:recognitionService="com.tejaswaroop.vyshu.VyshuRecognitionService"
     android:supportsAssist="true"
-    android:supportsLaunchFromKeyguard="true"
     android:supportsLocalInteraction="true" />
