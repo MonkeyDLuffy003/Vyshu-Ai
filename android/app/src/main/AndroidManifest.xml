@@ -1,9 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Internet for Gemini/Groq API -->
+    <!-- Internet for LLMProvider Layer (Gemini/Groq/OpenRouter/Mistral) -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
-    <!-- Voice -->
+    <!-- Voice & Wake Word -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
     <!-- Contacts & Telephony / AI Call Screening & Anti-Spam Shield -->
@@ -13,10 +13,17 @@
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS"/>
     <uses-permission android:name="android.permission.MANAGE_OWN_CALLS"/>
     <uses-permission android:name="android.permission.READ_CALL_LOG"/>
-    <!-- Universal package visibility so Vyshu accesses ALL apps (Instagram, Telegram, Netflix, Uber, Banking, etc.) -->
+
+    <!-- Universal package visibility so Vyshu can launch permitted apps -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
 
-    <!-- Notifications -->
+    <!-- System Overlay HUD (Live Task Progress + Instant STOP button over external apps) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+
+    <!-- Alarm Clock intent permission -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM"/>
+
+    <!-- Notifications & Boot Receiver -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
@@ -28,35 +35,23 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
 
-    <!-- FIX: BLUETOOTH alone is legacy (pre-Android 12). Android 12+ needs
-         the granular runtime permissions below; keeping the legacy one
-         capped at maxSdkVersion so it only applies on old devices. -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
 
-    <!-- Permissions for Android Memory Protection & Launcher Status -->
+    <!-- Permissions for Always-On Foreground Service & Battery Exemption -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
-    <!-- FIX: legacy storage permissions barely work on Android 13+ for
-         media access. Replaced/supplemented with the granular media
-         permissions actually used for offline music + chat image/video
-         sending. Legacy ones kept capped for older devices. -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
 
-    <!-- FIX: without this <queries> block, Android 11+ hides most other
-         apps from the package manager, so launchAppByName() and the
-         OPEN_APP tool would silently fail to find almost anything except
-         these listed here. The generic <intent> block at the end is what
-         lets Vyshu discover ANY launchable app by name, not just these. -->
     <queries>
         <package android:name="com.whatsapp"/>
         <package android:name="com.spotify.music"/>
@@ -96,7 +91,6 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
 
-            <!-- Android System Assist Trigger (Swipe up from bottom corner or long-press Home) -->
             <intent-filter>
                 <action android:name="android.intent.action.ASSIST"/>
                 <category android:name="android.intent.category.DEFAULT"/>
@@ -107,19 +101,26 @@
             </intent-filter>
         </activity>
 
-        <!-- Android OS System Assistant Voice Interaction Service -->
+        <!-- Vyshu Always-On Wake Word & Autonomous Agent Foreground Service -->
         <service
-            android:name=".VyshuVoiceInteractionService"
-            android:label="Vyshu AI Assistant"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true">
-            <meta-data
-                android:name="android.voice_interaction"
-                android:resource="@xml/voice_interaction_service"/>
-            <intent-filter>
-                <action android:name="android.service.voice.VoiceInteractionService"/>
-            </intent-filter>
+            android:name=".VyshuAgentForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="microphone|specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Vyshu Always-On Wake Word and Autonomous Agent Service"/>
         </service>
+
+        <!-- Boot Receiver to restart Always-On Agent Service after reboot -->
+        <receiver
+            android:name=".VyshuBootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
 
         <!-- Background Service for Memory Protection & Continuous AI Listening -->
         <service
@@ -131,6 +132,7 @@
                 android:value="Vyshu AI Continuous Memory and Intent Monitoring"/>
         </service>
 
+        <!-- Vyshu Accessibility Service for Screen Observation & Gesture Actions -->
         <service
             android:name=".VyshuAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
@@ -142,25 +144,6 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config"/>
-        </service>
-
-        <service
-            android:name=".VyshuNotificationListenerService"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService"/>
-            </intent-filter>
-        </service>
-
-        <!-- Vyshu AI Call Screening & Identity Protection Shield Service -->
-        <service
-            android:name=".VyshuCallScreeningService"
-            android:permission="android.permission.BIND_SCREENING_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.telecom.CallScreeningService"/>
-            </intent-filter>
         </service>
 
         <meta-data

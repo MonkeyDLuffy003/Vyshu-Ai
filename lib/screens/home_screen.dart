@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'chat_screen.dart';
-import 'virtual_room_screen.dart';
+import '../ai/vyshu_brain.dart';
+import '../services/vyshu_accessibility_bridge.dart';
 import 'athlete_screen.dart';
+import 'chat_screen.dart';
 import 'control_screen.dart';
+import 'live_task_overlay.dart';
 import 'settings_screen.dart';
+import 'virtual_room_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,10 +27,28 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    VyshuAccessibilityBridge.registerNativeCallbackHandler(
+      onEmergencyStopFromOverlay: () {
+        vyshuBrain.emergencyStop(reason: 'Stopped from Android system overlay');
+      },
+      onWakeWordCommand: (goal) {
+        vyshuBrain.handleInput(goal);
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: _screens[_currentIndex],
+      body: Stack(
+        children: [
+          _screens[_currentIndex],
+          const LiveTaskOverlay(),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         backgroundColor: const Color(0xFF0A0A0A),
         indicatorColor: const Color(0xFF00CCFF).withOpacity(0.2),

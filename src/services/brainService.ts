@@ -4,7 +4,7 @@ import { memoryManager } from './assistant/MemoryManager';
 import { secretaryDataManager } from './assistant/SecretaryDataManager';
 import { toolExecutor } from './assistant/ToolExecutor';
 import { vyshuVaultManager } from './vault/VaultRegistry';
-import { geminiAdapter, groqAdapter } from './vault/ProviderAdapters';
+import { REGISTERED_LLM_PROVIDERS } from './ai/LLMProvider';
 import { VyshuMode } from '../types/assistant';
 import { ChatMessage } from '../types';
 
@@ -60,59 +60,48 @@ export class BrainService {
     const secretaryState = secretaryDataManager.getFullSecretaryContext();
     const relevantMemory = memoryManager.retrieveRelevantContext(userQuery);
 
-    return `
-You are Vyshu — an intelligent personal AI secretary and executive assistant engineered exclusively for Teja.
+    return `${modePrompt}
 
-${modePrompt}
+=== VYSHU EXECUTIVE SECRETARY ENGINE ===
+CURRENT_TIME: ${new Date().toLocaleString()}
+ACTIVE_MODE: ${activeMode}
 
-CORE SECRETARY INSTRUCTIONS:
-1. EXECUTIVE SYNTHESIS & NO CANNED REPLIES:
-   - Generate natural, situationally accurate executive responses.
-   - When asked "What's my day?", provide a concise executive summary covering today's scheduled activities, upcoming appointments, and pending tasks.
-   - For morning briefings or evening wind-downs, review remaining obligations constructively.
-   - If Teja says he is tired or wants to adjust his evening, offer realistic options (e.g. postponing a specific task to tomorrow) rather than robotic clichés.
-
-2. ONGOING SECRETARY STATE:
 ${secretaryState}
 
-${relevantMemory ? `\nRELEVANT LONG-TERM MEMORY:\n${relevantMemory}` : ''}
+=== RELEVANT MEMORY ===
+${relevantMemory}
 
-3. EXECUTING ACTIONS & COORDINATING LOGISTICS:
-Whenever Teja requests an action, append the structured action tag to the END of your response so the app coordinates it:
-- Reschedule task: [ACTION: RESCHEDULE_TASK:taskQuery|newTime|newDate]
-- Add/Create task: [ACTION: CREATE_TASK:title|startTime|priority|category]
-- Mark completed: [ACTION: COMPLETE_TASK:taskQuery]
-- Set real alarm: [ACTION: SET_ALARM:time|label]
-- Create reminder: [ACTION: CREATE_REMINDER:message|triggerTime|condition]
-- Log appointment: [ACTION: BOOK_APPOINTMENT:name|date|time|location|contact]
-  (NOTE: If Teja asks to book a service like a dentist and no 3rd-party booking API exists, honestly state: "I can add it to your schedule, but I don't currently have direct access to their online booking system.")
-- Log follow-up: [ACTION: ADD_FOLLOWUP:title|targetDate|contactPerson]
-- Switch mode: [ACTION: CHANGE_MODE:PROFESSIONAL|HOME|NORMAL|STANDBY]
-- Explicitly remember: [ACTION: SAVE_MEMORY:key|value]
-
-4. PHONE TOOLS:
-- [TOOL: OPEN_SPOTIFY], [TOOL: OPEN_YOUTUBE], [TOOL: OPEN_WHATSAPP], [TOOL: OPEN_APP:appName]
-- [TOOL: TORCH_ON], [TOOL: TORCH_OFF]
+=== STRUCTURED ACTION TAGS ===
+When performing a secretary or phone action, append the appropriate tag at the end of your reply:
+- [ACTION: CREATE_TASK:title|HH:MM|priority|category]
+- [ACTION: RESCHEDULE_TASK:taskQuery|newTime|newDate]
+- [ACTION: COMPLETE_TASK:taskQuery]
+- [ACTION: SET_ALARM:HH:MM|label]
+- [ACTION: CREATE_REMINDER:message|triggerTime|condition]
+- [ACTION: BOOK_APPOINTMENT:name|date|time|location|contact]
+- [ACTION: SWITCH_MODE:PROFESSIONAL|HOME]
+- [ACTION: SAVE_MEMORY:category|content]
 `;
   }
 
-  // Graceful offline fallback
-  private getOfflineResponse(userMessage: string, mode: VyshuMode): string {
+  public getOfflineResponse(userMessage: string, mode: VyshuMode): string {
     const lower = userMessage.toLowerCase().trim();
-    const salutation = mode === 'PROFESSIONAL' ? 'Sir' : 'buddy';
+    const salutation = mode === 'PROFESSIONAL' ? 'Sir' : 'Teja';
 
-    // 1. Check schedule queries / "what's my day"
-    if (lower.includes('my day') || lower.includes('schedule') || lower.includes('what is left') || lower.includes('tasks')) {
-      const todayTasks = secretaryDataManager.getTodayTasks();
-      const pending = todayTasks.filter((t) => t.status !== 'completed');
-      if (pending.length === 0) {
-        return `You're all clear for today, ${salutation}. No remaining scheduled tasks.`;
-      }
-      const summary = pending.map((t) => `${t.title} at ${t.startTime || 'TBD'}`).join(', ');
+    // Direct Rule Commands (Work with Zero API Keys!)
+    if (lower === 'time' || lower.includes('what time is it') || lower.includes('current time')) {
+      return `It is ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, ${salutation}. (Add an API key in Vault to unlock full intelligence.)`;
+    }
+    if (lower.includes('torch on') || lower.includes('turn on torch') || lower.includes('flashlight on')) {
+      return `Torch turned on, ${salutation}. (Add an API key in Vault to unlock full intelligence.)`;
+    }
+    if (lower.includes('torch off') || lower.includes('turn off torch') || lower.includes('flashlight off')) {
+      return `Torch turned off, ${salutation}. (Add an API key in Vault to unlock full intelligence.)`;
+    }
+    if (lower.includes('schedule') || lower.includes('agenda') || lower.includes('tasks today')) {
+      const summary = secretaryDataManager.getFullSecretaryContext();
       return `Here is your day, ${salutation}: ${summary}.`;
     }
-
-    // 2. Direct rescheduling fallback
     if (lower.includes('move') || lower.includes('postpone') || lower.includes('reschedule')) {
       const match = lower.match(/move\s+(.+?)\s+to\s+([0-9]+(?::[0-9]+)?(?:\s*[ap]m)?)/i);
       if (match) {
@@ -128,17 +117,13 @@ Whenever Teja requests an action, append the structured action tag to the END of
         }
       }
     }
-
-    // 3. Alarms
     if (lower.includes('alarm')) {
-      const match = lower.match(/(?:set|wake me at)\s+([0-9]+(?::[0-9]+)?(?:\s*[ap]m)?)/i);
+      const match = lower.match(/(?:set|wake me at|for)\s+([0-9]+(?::[0-9]+)?(?:\s*[ap]m)?)/i);
       if (match) {
         const alarm = secretaryDataManager.setAlarm(match[1]);
         return `Alarm configured for ${alarm.time}, ${salutation}.`;
       }
     }
-
-    // 4. Mode switch offline fallback
     if (lower.includes('office mode') || lower.includes('work mode') || lower.includes('professional mode')) {
       modeManager.setMode('PROFESSIONAL');
       return `Professional mode engaged, Sir. Standing by for executive tasks.`;
@@ -148,7 +133,7 @@ Whenever Teja requests an action, append the structured action tag to the END of
       return `Home mode activated, buddy. How was your day?`;
     }
 
-    return `At your service, ${salutation}. Secretary database, schedule, and memory are fully operational offline.`;
+    return `Direct device rules (torch, volume, alarm, open app, call, time) are active, ${salutation}. Add an API key in Vault to unlock full intelligence.`;
   }
 
   public async respond(
@@ -169,11 +154,16 @@ Whenever Teja requests an action, append the structured action tag to the END of
     }
 
     const systemInstruction = this.assembleSystemContext(userMessage);
+    const history = storageService.getChatHistory().slice(-8);
+    const fullPrompt = [
+      ...history.map((h: ChatMessage) => `${h.role === 'user' ? 'Teja' : 'Vyshu'}: ${h.text}`),
+      `Teja: ${userMessage}`,
+    ].join('\n');
 
-    // 1. Try Gemini via Vault Active Key
+    // 1. Try GeminiProvider via LLMProvider layer
     const geminiCred = vyshuVaultManager.acquireActiveCredential('gemini');
     let geminiKeyToUse = geminiCred?.rawKey;
-    let geminiCredId = geminiCred?.id;
+    const geminiCredId = geminiCred?.id;
 
     if (!geminiKeyToUse) {
       const keys = this.getActiveKeys();
@@ -185,78 +175,55 @@ Whenever Teja requests an action, append the structured action tag to the END of
     }
 
     if (geminiKeyToUse && navigator.onLine) {
-      try {
-        const history = storageService.getChatHistory().slice(-8);
-        const contents = [
-          {
-            role: 'user',
-            parts: [{ text: systemInstruction }],
-          },
-          {
-            role: 'model',
-            parts: [{ text: `Understood. I am online as Teja's personal AI secretary and executive assistant in ${currentMode} mode.` }],
-          },
-          ...history.map((h: ChatMessage) => ({
-            role: h.role === 'user' ? 'user' : 'model',
-            parts: [{ text: h.text }],
-          })),
-          {
-            role: 'user',
-            parts: [{ text: userMessage }],
-          },
-        ];
+      const geminiProvider = REGISTERED_LLM_PROVIDERS.gemini;
+      const res = await geminiProvider.complete({
+        prompt: fullPrompt,
+        systemPrompt: systemInstruction,
+        apiKey: geminiKeyToUse,
+        keyId: geminiCredId,
+      });
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKeyToUse}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents }),
-          signal: AbortSignal.timeout(16000),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          let candidate: string = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidate) {
-            const actionMatch = candidate.match(/\[ACTION:\s*[A-Z_]+(?::.*?)?\]/g);
-            if (actionMatch) {
-              actionMatch.forEach((act) => {
-                toolExecutor.executeTool(act);
-                candidate = candidate.replace(act, '').trim();
-              });
-            }
-            return { text: candidate.trim(), id: turnId };
-          }
-        } else if (res.status === 429) {
-          if (geminiCredId) vyshuVaultManager.reportRateLimit(geminiCredId, 60);
-        } else if (res.status === 400 || res.status === 403) {
-          const errBody = await res.text();
-          if (errBody.includes('API_KEY_INVALID') && geminiCredId) {
-            vyshuVaultManager.reportInvalidKey(geminiCredId);
-          }
+      if (res.success && res.text) {
+        let candidate = res.text;
+        const actionMatch = candidate.match(/\[ACTION:\s*[A-Z_]+(?::.*?)?\]/g);
+        if (actionMatch) {
+          actionMatch.forEach((act) => {
+            toolExecutor.executeTool(act);
+            candidate = candidate.replace(act, '').trim();
+          });
         }
-      } catch (e) {
-        console.warn('Gemini request failed, evaluating provider fallback...', e);
+        return { text: candidate.trim(), id: turnId };
+      } else if (res.isRateLimited && geminiCredId) {
+        vyshuVaultManager.reportRateLimit(geminiCredId, 60);
+      } else if (res.isInvalidKey && geminiCredId) {
+        vyshuVaultManager.reportInvalidKey(geminiCredId);
       }
     }
 
-    // 2. Seamless Provider Fallback: Groq Cloud Free Tier (Llama 3.3 70B)
-    if (navigator.onLine) {
-      try {
-        const groqResult = await groqAdapter.execute(userMessage, systemInstruction);
-        if (groqResult.success && groqResult.data) {
-          let reply = groqResult.data;
-          const actionMatch = reply.match(/\[ACTION:\s*[A-Z_]+(?::.*?)?\]/g);
-          if (actionMatch) {
-            actionMatch.forEach((act) => {
-              toolExecutor.executeTool(act);
-              reply = reply.replace(act, '').trim();
-            });
-          }
-          return { text: reply.trim(), id: turnId };
+    // 2. Fallback to OpenAICompatibleProvider (Groq) via LLMProvider layer
+    const groqCred = vyshuVaultManager.acquireActiveCredential('groq');
+    const legacyGroq = storageService.getVaultKeys().groq?.trim();
+    const groqKey = groqCred?.rawKey || legacyGroq;
+
+    if (groqKey && navigator.onLine) {
+      const groqProvider = REGISTERED_LLM_PROVIDERS.groq;
+      const groqRes = await groqProvider.complete({
+        prompt: fullPrompt,
+        systemPrompt: systemInstruction,
+        apiKey: groqKey,
+        keyId: groqCred?.id,
+      });
+
+      if (groqRes.success && groqRes.text) {
+        let reply = groqRes.text;
+        const actionMatch = reply.match(/\[ACTION:\s*[A-Z_]+(?::.*?)?\]/g);
+        if (actionMatch) {
+          actionMatch.forEach((act) => {
+            toolExecutor.executeTool(act);
+            reply = reply.replace(act, '').trim();
+          });
         }
-      } catch (e) {
-        console.warn('Groq fallback attempt failed', e);
+        return { text: reply.trim(), id: turnId };
       }
     }
 

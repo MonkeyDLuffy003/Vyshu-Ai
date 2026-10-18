@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.tejaswaroop.vyshu"
+    namespace = "com.vyshu.ai"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.tejaswaroop.vyshu"
+        applicationId = "com.vyshu.ai"
         minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode

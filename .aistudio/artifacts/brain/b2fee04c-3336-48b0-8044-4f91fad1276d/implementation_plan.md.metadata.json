@@ -1,0 +1,6 @@
+{
+  "summary": "Comprehensive implementation plan to upgrade Vyshu-Ai into an autonomous on-device AI agent with a decoupled VyshuBrain, swappable LLMProvider layer, Observe-Plan-Act-Verify accessibility agent loop, rule-based zero-key fallback, safety guardrails, sub-agent dispatch hooks, and dual Live Task Overlay & Drawer UI.",
+  "updatedAt": "2026-10-17T20:05:01.160230218Z",
+  "requestFeedback": true,
+  "userFacing": true
+}
