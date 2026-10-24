@@ -121,3 +121,30 @@ Upgrade **Vyshu-Ai** into an autonomous on-device Android AI agent powered by he
 
 4. **Sub-Agent Hook (`SubAgentDispatcher`)**:
    - Standardized JSON contract `{"agent": "Vaani" | "Nisha" | "Garuda" | "Veda", "task": "...", "durationMinutes": 60, "status": "running"}` with an active timer that automatically invokes stop/cleanup when a timed task (such as *"play songs in Vaani for 1 hour"*) expires.
+
+---
+
+## 5. Feature 7: Vyshu Sleep Mode & Specialized Agent System
+
+1. **Central Output Policy Service (`OutputPolicyService`)**:
+   - Single source of truth governing audio output, spontaneous voice alerts, and chime notifications across the app.
+   - Four audio output modes: `normal`, `lowVolume` (soft whisper 15-20%), `voiceOnDemand` (speaks only when user says "speak this" or "read aloud"), and `textOnly` (strict silence).
+   - Configurable automatic bedtime/wake schedule (`bedHour`, `bedMinute`, `wakeHour`, `wakeMinute`) with overnight crossing support.
+   - Manual instant override toggle ("Good night" / "Sleep mode on" direct zero-key rule).
+   - Priority alerts toggle (`allowPriorityAlarms`) for critical contacts and emergency call screening pass-through.
+   - SharedPreferences JSON persistence surviving app reboots.
+
+2. **Control Screen UI Integration**:
+   - Dedicated "Vyshu Sleep & Quiet Hours" status card in the Control tab.
+   - Real-time indicator badges (`SLEEP ACTIVE` vs `DAY MODE`).
+   - Time pickers for Bedtime and Wake-up times.
+   - Audio policy selector chips (`Text Only`, `Whisper Low Vol`, `Voice on Demand`).
+   - Switches for Quiet Notifications and Priority Alarms.
+
+3. **Specialized Feature Agents**:
+   - **News Express Agent (`NewsExpressAgent`)**: 16 curated categories (AI, Tech, Science, Space, Startups, Cybersecurity, etc.), AI-powered 3-bullet executive briefings, source attribution, and silent text presentation during Sleep Mode.
+   - **Language Coach Agent (`LanguageCoachAgent`)**: 18 supported Indian and global languages, natural conversational grammar drills, pronunciation hints, and whisper-level nighttime practice.
+   - **Focus Agent (`FocusAgent`)**: Deep-work timers (Pomodoro / custom), distracting app detection via `VyshuAccessibilityBridge`, and home-screen redirection.
+   - **Samsung TV Agent (`SamsungTvAgent`)**: SmartThings REST API & local network WebSocket controls for TV power, volume, YouTube playback, and input switching.
+   - **Call Intelligence Agent (`CallIntelligenceAgent`)**: Urgent caller screening with emergency keyword detection and priority breakthrough during Sleep Mode.
+

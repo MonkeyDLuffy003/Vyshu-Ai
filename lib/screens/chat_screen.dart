@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/brain_service.dart';
 import '../services/vyshu_accessibility_bridge.dart';
+import '../services/output_policy_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -134,19 +135,48 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   /// Strips ALL tool tags (not just STICKER) before speaking, so Vyshu
   /// never reads "tool open whatsapp" out loud.
-  Future<void> _speak(String text) async {
-  if (!_voiceOutputOn) return;
-  final noEmoji = text.replaceAll(
-    RegExp(
-      r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]',
-      unicode: true,
-    ),
-    '',
-  );
-  final clean = noEmoji.replaceAll(_anyToolTag, '').replaceAll(RegExp(r'[*_~`]'), '').trim();
-  if (clean.isEmpty) return;
-  await _tts.stop();
-  await _tts.speak(clean);
+  /// Strictly respects OutputPolicyService (Sleep Mode).
+  Future<void> _speak(String text, {bool explicitUserRequest = false}) async {
+    if (!_voiceOutputOn) return;
+
+    final outputMode = outputPolicyService.resolveOutputMode(
+      explicitUserVoiceRequest: explicitUserRequest,
+    );
+
+    if (outputMode == AudioOutputMode.textOnly) {
+      debugPrint('VYSHU_AGENT: [SleepMode] Text-only policy active. Spoken audio suppressed.');
+      return;
+    }
+
+    if (outputMode == AudioOutputMode.voiceOnDemand && !explicitUserRequest) {
+      debugPrint('VYSHU_AGENT: [SleepMode] Voice-on-demand policy active. Spoken audio withheld.');
+      return;
+    }
+
+    final noEmoji = text.replaceAll(
+      RegExp(
+        r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]',
+        unicode: true,
+      ),
+      '',
+    );
+    final clean = noEmoji.replaceAll(_anyToolTag, '').replaceAll(RegExp(r'[*_~`]'), '').trim();
+    if (clean.isEmpty) return;
+
+    await _tts.stop();
+
+    if (outputMode == AudioOutputMode.lowVolume) {
+      // Set soft whisper volume and slower cadence for night time
+      await _tts.setVolume(0.25);
+      await _tts.setSpeechRate(0.42);
+      await _tts.setPitch(0.95);
+    } else {
+      await _tts.setVolume(1.0);
+      await _tts.setSpeechRate(0.48);
+      await _tts.setPitch(1.05);
+    }
+
+    await _tts.speak(clean);
   }
 
   void _toggleVoiceOutput() {

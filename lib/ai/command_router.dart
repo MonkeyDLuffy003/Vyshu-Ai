@@ -121,6 +121,35 @@ class CommandRouter {
       );
     }
 
+    // Sleep Mode activation / deactivation commands
+    if (lower.contains('sleep mode on') ||
+        lower.contains('turn on sleep mode') ||
+        lower.contains('activate sleep mode') ||
+        lower.contains('enable sleep mode') ||
+        lower == 'good night' ||
+        lower == 'goodnight vyshu') {
+      return const RouteDecision(
+        intent: RouteIntent.directCommand,
+        directAction: 'set_sleep_mode',
+        directArgs: {'enabled': true},
+        immediateReply: 'Sleep Mode activated. Good night, Teja. I will keep responses quiet and text-only.',
+      );
+    }
+
+    if (lower.contains('sleep mode off') ||
+        lower.contains('turn off sleep mode') ||
+        lower.contains('deactivate sleep mode') ||
+        lower.contains('disable sleep mode') ||
+        lower == 'good morning' ||
+        lower == 'wake up vyshu') {
+      return const RouteDecision(
+        intent: RouteIntent.directCommand,
+        directAction: 'set_sleep_mode',
+        directArgs: {'enabled': false},
+        immediateReply: 'Sleep Mode deactivated. Good morning, Teja! Normal voice output restored.',
+      );
+    }
+
     // Alarm: "set alarm for 6:30" or "set an alarm at 07:15"
     final alarmMatch = RegExp(r'alarm\s+(?:for|at)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?').firstMatch(lower);
     if (alarmMatch != null) {
@@ -175,6 +204,66 @@ class CommandRouter {
         directAction: 'dispatch_sub_agent',
         directArgs: {'agent': 'Vaani', 'task': text, 'duration': minutes},
         immediateReply: 'Dispatched to Vaani for $minutes minutes with auto-stop active.',
+      );
+    }
+
+    // Focus Agent direct command: "start focus mode for 30 minutes"
+    final focusMatch =
+        RegExp(r'(?:start\s+)?focus(?:\s+mode|\s+session)?(?:\s+for\s+(\d+)\s*(?:min|minutes))?', caseSensitive: false)
+            .firstMatch(lower);
+    if (focusMatch != null && !lower.contains('stop')) {
+      final mins = int.tryParse(focusMatch.group(1) ?? '25') ?? 25;
+      return RouteDecision(
+        intent: RouteIntent.directCommand,
+        directAction: 'start_focus',
+        directArgs: {'minutes': mins, 'goal': 'Deep Work'},
+        immediateReply: 'Focus session started for $mins minutes. Distracting apps are now blocked.',
+      );
+    }
+
+    // Samsung TV direct command: "turn on tv" / "turn off tv" / "play ... on tv"
+    if (lower == 'turn on tv' || lower == 'tv on' || lower == 'turn on samsung tv') {
+      return const RouteDecision(
+        intent: RouteIntent.directCommand,
+        directAction: 'control_tv',
+        directArgs: {'command': 'power_on'},
+        immediateReply: 'Turning on your Samsung Smart TV.',
+      );
+    }
+    if (lower == 'turn off tv' || lower == 'tv off' || lower == 'turn off samsung tv') {
+      return const RouteDecision(
+        intent: RouteIntent.directCommand,
+        directAction: 'control_tv',
+        directArgs: {'command': 'power_off'},
+        immediateReply: 'Turning off your Samsung Smart TV.',
+      );
+    }
+
+    // News Express direct command: "tell me the news", "latest tech news", "ai news"
+    if (lower.startsWith('news') ||
+        lower.contains('tell me the news') ||
+        lower.contains('latest news') ||
+        lower.contains('news briefing') ||
+        lower.endsWith('news')) {
+      return RouteDecision(
+        intent: RouteIntent.directCommand,
+        directAction: 'get_news',
+        directArgs: {'topic': text},
+        immediateReply: null,
+      );
+    }
+
+    // Language Coach drill: "drill telugu", "teach me hindi", "spanish drill"
+    final drillMatch =
+        RegExp(r'(?:drill|teach me|practice)\s+([a-zA-Z]+)(?:\s+drill|\s+words)?', caseSensitive: false)
+            .firstMatch(lower);
+    if (drillMatch != null) {
+      final lang = drillMatch.group(1)!;
+      return RouteDecision(
+        intent: RouteIntent.directCommand,
+        directAction: 'coach_language',
+        directArgs: {'language': lang, 'drill': true},
+        immediateReply: null,
       );
     }
 

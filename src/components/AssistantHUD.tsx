@@ -48,6 +48,8 @@ export const AssistantHUD: React.FC<AssistantHUDProps> = ({ onSelectPrompt }) =>
         return { label: 'NORMAL / TEJA', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' };
       case 'STANDBY':
         return { label: 'STANDBY', color: 'bg-slate-700/30 text-slate-400 border-slate-700' };
+      case 'SLEEP':
+        return { label: 'SLEEP / QUIET', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' };
     }
   };
 

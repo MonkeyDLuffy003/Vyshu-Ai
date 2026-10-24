@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../ai/sub_agent_dispatcher.dart';
 import '../ai/vyshu_brain.dart';
+import '../services/output_policy_service.dart';
 import '../services/vyshu_accessibility_bridge.dart';
 
 /// Control Panel — Accessibility Status, Always-On Wake Word Toggle,
-/// Autonomous Agent Goal Runner, Mobile Accessories & Sub-Agent Monitor.
+/// Sleep Mode & Output Policy, Autonomous Agent Goal Runner, Mobile Accessories & Sub-Agents.
 class ControlScreen extends StatefulWidget {
   const ControlScreen({super.key});
 
@@ -24,11 +25,18 @@ class _ControlScreenState extends State<ControlScreen> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    outputPolicyService.init();
+    outputPolicyService.addListener(_onPolicyChanged);
     _refreshSystemState();
+  }
+
+  void _onPolicyChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    outputPolicyService.removeListener(_onPolicyChanged);
     WidgetsBinding.instance.removeObserver(this);
     _goalController.dispose();
     super.dispose();
@@ -248,7 +256,12 @@ class _ControlScreenState extends State<ControlScreen> with WidgetsBindingObserv
 
             const SizedBox(height: 16),
 
-            // 3. Direct Autonomous Goal Launcher
+            // 3. Vyshu Sleep & Quiet Hours Control (Feature 7)
+            _buildSleepModeCard(),
+
+            const SizedBox(height: 16),
+
+            // 4. Direct Autonomous Goal Launcher
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -452,6 +465,310 @@ class _ControlScreenState extends State<ControlScreen> with WidgetsBindingObserv
             const Icon(Icons.open_in_new, color: Colors.white54, size: 18),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSleepModeCard() {
+    final settings = outputPolicyService.settings;
+    final isSleepActive = outputPolicyService.isSleepModeActive;
+    final isManual = outputPolicyService.isManualSleepActive;
+
+    final bedTimeStr =
+        '${settings.bedHour.toString().padLeft(2, '0')}:${settings.bedMinute.toString().padLeft(2, '0')}';
+    final wakeTimeStr =
+        '${settings.wakeHour.toString().padLeft(2, '0')}:${settings.wakeMinute.toString().padLeft(2, '0')}';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isSleepActive ? const Color(0xFF13112E) : const Color(0xFF101528),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isSleepActive ? const Color(0xFF8B5CF6) : Colors.white12,
+          width: isSleepActive ? 1.5 : 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isSleepActive ? Icons.bedtime : Icons.nights_stay_outlined,
+                color: isSleepActive ? const Color(0xFFA78BFA) : const Color(0xFF00CCFF),
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Vyshu Sleep & Quiet Hours',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      isSleepActive
+                          ? (isManual
+                              ? 'Active (Manual Override) · Audio Muted'
+                              : 'Active (Scheduled) · Audio Muted')
+                          : (settings.scheduleEnabled
+                              ? 'Scheduled: $bedTimeStr → $wakeTimeStr'
+                              : 'Schedule Off · Normal Mode'),
+                      style: TextStyle(
+                        color: isSleepActive ? const Color(0xFFA78BFA) : Colors.white60,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isSleepActive
+                      ? const Color(0xFF8B5CF6).withOpacity(0.2)
+                      : Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isSleepActive ? const Color(0xFF8B5CF6) : Colors.white24,
+                  ),
+                ),
+                child: Text(
+                  isSleepActive ? 'SLEEP ACTIVE' : 'DAY MODE',
+                  style: TextStyle(
+                    color: isSleepActive ? const Color(0xFFA78BFA) : Colors.white70,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(color: Colors.white12, height: 1),
+          const SizedBox(height: 10),
+
+          // Manual Override Toggle
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Manual Sleep Mode',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    'Instant silent mode override anytime',
+                    style: TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                ],
+              ),
+              Switch(
+                value: settings.manualSleepActive,
+                activeColor: const Color(0xFFA78BFA),
+                onChanged: (val) async {
+                  await outputPolicyService.setManualSleepMode(val);
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Schedule Toggle & Time Pickers
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Bedtime Schedule',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    'Auto-quiet between bedtime and wake-up',
+                    style: TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                ],
+              ),
+              Switch(
+                value: settings.scheduleEnabled,
+                activeColor: const Color(0xFF00CCFF),
+                onChanged: (val) async {
+                  await outputPolicyService.setScheduleEnabled(val);
+                },
+              ),
+            ],
+          ),
+
+          if (settings.scheduleEnabled) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay(hour: settings.bedHour, minute: settings.bedMinute),
+                      );
+                      if (picked != null) {
+                        await outputPolicyService.setBedTime(picked.hour, picked.minute);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.nightlight_round, size: 16, color: Color(0xFFA78BFA)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Bed: $bedTimeStr',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay(hour: settings.wakeHour, minute: settings.wakeMinute),
+                      );
+                      if (picked != null) {
+                        await outputPolicyService.setWakeTime(picked.hour, picked.minute);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.wb_sunny_outlined, size: 16, color: Color(0xFFFBBF24)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Wake: $wakeTimeStr',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          const SizedBox(height: 12),
+          const Text(
+            'Sleep Audio Policy',
+            style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              ChoiceChip(
+                label: const Text('Text Only', style: TextStyle(fontSize: 11)),
+                selected: settings.sleepAudioMode == AudioOutputMode.textOnly,
+                selectedColor: const Color(0xFF8B5CF6),
+                backgroundColor: const Color(0xFF1E2238),
+                labelStyle: TextStyle(
+                  color: settings.sleepAudioMode == AudioOutputMode.textOnly ? Colors.white : Colors.white70,
+                  fontWeight: FontWeight.bold,
+                ),
+                onSelected: (selected) {
+                  if (selected) outputPolicyService.setSleepAudioMode(AudioOutputMode.textOnly);
+                },
+              ),
+              ChoiceChip(
+                label: const Text('Whisper (Low Vol)', style: TextStyle(fontSize: 11)),
+                selected: settings.sleepAudioMode == AudioOutputMode.lowVolume,
+                selectedColor: const Color(0xFF8B5CF6),
+                backgroundColor: const Color(0xFF1E2238),
+                labelStyle: TextStyle(
+                  color: settings.sleepAudioMode == AudioOutputMode.lowVolume ? Colors.white : Colors.white70,
+                  fontWeight: FontWeight.bold,
+                ),
+                onSelected: (selected) {
+                  if (selected) outputPolicyService.setSleepAudioMode(AudioOutputMode.lowVolume);
+                },
+              ),
+              ChoiceChip(
+                label: const Text('Voice on Demand', style: TextStyle(fontSize: 11)),
+                selected: settings.sleepAudioMode == AudioOutputMode.voiceOnDemand,
+                selectedColor: const Color(0xFF8B5CF6),
+                backgroundColor: const Color(0xFF1E2238),
+                labelStyle: TextStyle(
+                  color: settings.sleepAudioMode == AudioOutputMode.voiceOnDemand ? Colors.white : Colors.white70,
+                  fontWeight: FontWeight.bold,
+                ),
+                onSelected: (selected) {
+                  if (selected) outputPolicyService.setSleepAudioMode(AudioOutputMode.voiceOnDemand);
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Quiet Notifications', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Switch(
+                value: settings.quietNotifications,
+                activeColor: const Color(0xFF00CCFF),
+                onChanged: (val) => outputPolicyService.setQuietNotifications(val),
+              ),
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Allow Priority Alarms', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Switch(
+                value: settings.allowPriorityAlarms,
+                activeColor: const Color(0xFF00CCFF),
+                onChanged: (val) => outputPolicyService.setAllowPriorityAlarms(val),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

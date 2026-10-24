@@ -2,6 +2,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/vyshu_accessibility_bridge.dart';
+import '../services/output_policy_service.dart';
+import 'agents/call_intelligence_agent.dart';
+import 'agents/focus_agent.dart';
+import 'agents/language_coach_agent.dart';
+import 'agents/news_express_agent.dart';
+import 'agents/samsung_tv_agent.dart';
 import 'sub_agent_dispatcher.dart';
 
 /// Standardized return type for every Action Library skill: {success, detail}
@@ -41,6 +47,11 @@ class ActionLibrary {
     'search_in_app',
     'play_media',
     'dispatch_sub_agent',
+    'set_sleep_mode',
+    'get_news',
+    'control_tv',
+    'start_focus',
+    'coach_language',
     'finish',
   };
 
@@ -287,6 +298,17 @@ class ActionLibrary {
           );
         }
 
+        case 'set_sleep_mode': {
+          final enabled = args['enabled'] == true || args['state']?.toString().toLowerCase() == 'on';
+          await outputPolicyService.setManualSleepMode(enabled);
+          return ActionOutcome(
+            success: true,
+            detail: enabled
+                ? 'Sleep Mode activated. Voice output restricted to quiet/text-only.'
+                : 'Sleep Mode deactivated. Normal voice settings restored.',
+          );
+        }
+
         case 'dispatch_sub_agent': {
           final agent = (args['agent'] ?? 'Vaani').toString();
           final task = (args['task'] ?? '').toString();
@@ -300,6 +322,55 @@ class ActionLibrary {
             success: true,
             detail: 'Sub-agent ${res.agent} started task "${res.task}" (duration=${res.durationMinutes}m)',
           );
+        }
+
+        case 'get_news': {
+          final catId = args['category']?.toString();
+          final topic = args['topic']?.toString();
+          final brief = await newsExpressAgent.getBriefing(categoryId: catId, topic: topic);
+          return ActionOutcome(success: true, detail: brief);
+        }
+
+        case 'control_tv': {
+          final cmd = (args['command'] ?? 'power').toString().toLowerCase();
+          String res;
+          if (cmd == 'power_on' || cmd == 'on') {
+            res = await samsungTvAgent.setPower(true);
+          } else if (cmd == 'power_off' || cmd == 'off') {
+            res = await samsungTvAgent.setPower(false);
+          } else if (cmd == 'volume') {
+            final vol = (args['volume'] as num?)?.toInt() ?? 18;
+            res = await samsungTvAgent.setVolume(vol);
+          } else if (cmd == 'youtube' || cmd == 'play') {
+            final query = (args['query'] ?? 'lo-fi hip hop').toString();
+            res = await samsungTvAgent.playYouTube(query);
+          } else {
+            res = samsungTvAgent.getStatusSummary();
+          }
+          return ActionOutcome(success: true, detail: res);
+        }
+
+        case 'start_focus': {
+          final mins = (args['minutes'] as num?)?.toInt() ?? 25;
+          final goal = (args['goal'] ?? 'Deep Work').toString();
+          focusAgent.startSession(minutes: mins, goal: goal);
+          return ActionOutcome(
+            success: true,
+            detail: 'Focus session started for $mins min ("$goal"). Distracting apps will be blocked.',
+          );
+        }
+
+        case 'coach_language': {
+          final lang = (args['language'] ?? 'Telugu').toString();
+          final phrase = (args['phrase'] ?? '').toString();
+          final isDrill = args['drill'] == true;
+          String feedback;
+          if (isDrill) {
+            feedback = await languageCoachAgent.getDailyDrill(languageName: lang);
+          } else {
+            feedback = await languageCoachAgent.evaluateTurn(userText: phrase, languageName: lang);
+          }
+          return ActionOutcome(success: true, detail: feedback);
         }
 
         case 'finish': {

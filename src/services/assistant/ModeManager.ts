@@ -8,7 +8,7 @@ export class ModeManager {
 
   private constructor() {
     const saved = localStorage.getItem(STORAGE_KEY) as VyshuMode;
-    if (saved && ['PROFESSIONAL', 'HOME', 'NORMAL', 'STANDBY'].includes(saved)) {
+    if (saved && ['PROFESSIONAL', 'HOME', 'NORMAL', 'STANDBY', 'SLEEP'].includes(saved)) {
       this.currentMode = saved;
     }
   }
@@ -22,6 +22,10 @@ export class ModeManager {
 
   public getMode(): VyshuMode {
     return this.currentMode;
+  }
+
+  public isSleepMode(): boolean {
+    return this.currentMode === 'SLEEP';
   }
 
   public setMode(mode: VyshuMode): void {
@@ -63,6 +67,15 @@ ACTIVE MODE: STANDBY / QUIET MODE
 - Salutation: Minimal.
 - Tone: Silent observer. Answer only direct queries with absolute brevity (1 sentence). Do not start unsolicited conversations.
 - Example: "Standing by."
+`;
+
+      case 'SLEEP':
+        return `
+ACTIVE MODE: SLEEP / QUIET NIGHT MODE
+- Salutation: Minimal or none.
+- Tone: Soft, whisper-like brevity, calming, strictly text-first.
+- Rules: Never initiate loud voice announcements. Provide text responses by default. Keep answers under 2 sentences unless requested.
+- Example: "Good night. Quiet mode active."
 `;
     }
   }

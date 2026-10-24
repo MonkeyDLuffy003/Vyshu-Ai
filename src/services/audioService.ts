@@ -1,3 +1,5 @@
+import { modeManager } from './assistant/ModeManager';
+
 // Audio service handling Web Speech API (TTS & STT) and cybernetic sound cues
 
 class AudioService {
@@ -25,6 +27,9 @@ class AudioService {
 
   // Play crisp cybernetic feedback sounds
   public playSound(type: 'wake' | 'send' | 'alert' | 'click' | 'toggle'): void {
+    if (modeManager.isSleepMode()) {
+      return; // Suppress all sound cues during sleep mode
+    }
     try {
       const ctx = this.getAudioContext();
       const osc = ctx.createOscillator();
@@ -85,8 +90,19 @@ class AudioService {
     return clean;
   }
 
-  public speak(text: string, langCode: string = 'en-US', onEnd?: () => void): void {
+  public speak(
+    text: string,
+    langCode: string = 'en-US',
+    onEnd?: () => void,
+    forceSpeak: boolean = false
+  ): void {
     if (!this.synth) return;
+
+    if (modeManager.isSleepMode() && !forceSpeak) {
+      // Strictly suppress automatic speech during Sleep Mode
+      if (onEnd) onEnd();
+      return;
+    }
 
     this.stopSpeaking();
     const clean = this.cleanTextForSpeech(text);
@@ -96,7 +112,14 @@ class AudioService {
     }
 
     const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.rate = 1.0;
+    if (modeManager.isSleepMode() && forceSpeak) {
+      // Configured low-volume whisper mode
+      utterance.volume = 0.2;
+      utterance.rate = 0.85;
+    } else {
+      utterance.volume = 1.0;
+      utterance.rate = 1.0;
+    }
     utterance.pitch = 1.05; // Slightly youthful tone for Vyshu
     utterance.lang = langCode;
 

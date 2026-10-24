@@ -1,4 +1,4 @@
-export type VyshuMode = 'PROFESSIONAL' | 'HOME' | 'NORMAL' | 'STANDBY';
+export type VyshuMode = 'PROFESSIONAL' | 'HOME' | 'NORMAL' | 'STANDBY' | 'SLEEP';
 
 export type TaskPriority = 'high' | 'medium' | 'low';
 
