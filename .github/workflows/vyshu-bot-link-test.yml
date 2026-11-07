@@ -1,0 +1,123 @@
+name: Test native Vyshu to Vaani link
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the reviewed Vaani version
+        uses: actions/checkout@v4
+        with:
+          repository: MonkeyDLuffy003/Vaani-
+          ref: a0e030edfce0355bad9eb9c8534cd96e5efd8a48
+          path: vaani-source
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Install Android build packages
+        run: sdkmanager "platforms;android-36.1" "build-tools;36.0.0"
+
+      - name: Prepare native sources
+        run: python3 tools/prepare_bot_link.py
+
+      - name: Reuse the test signing key
+        uses: actions/cache@v4
+        with:
+          path: .test-signing/debug.keystore
+          key: vyshu-vaani-link-test-signing-v1
+
+      - name: Configure test signing
+        shell: bash
+        run: |
+          mkdir -p .test-signing "$HOME/.android"
+
+          if [ ! -f .test-signing/debug.keystore ]; then
+            keytool -genkeypair \
+              -keystore .test-signing/debug.keystore \
+              -storepass android \
+              -keypass android \
+              -alias androiddebugkey \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Vyshu Integration Test,O=Personal,C=IN"
+          fi
+
+          cp .test-signing/debug.keystore "$HOME/.android/debug.keystore"
+          cp .test-signing/debug.keystore vaani-source/debug.keystore
+
+      - name: Test authentication and build Vaani
+        run: >-
+          gradle -p vaani-source
+          :app:testDebugUnitTest
+          --tests com.example.control.VyshuGateTest
+          :app:assembleDebug
+          --no-daemon
+
+      - name: Build native Vyshu test controller
+        run: gradle -p native-control :app:assembleDebug --no-daemon
+
+      - name: Package APKs and inspectable source
+        shell: bash
+        run: |
+          mkdir -p output
+
+          cp native-control/app/build/outputs/apk/debug/app-debug.apk \
+            output/Vyshu-Link-Test.apk
+
+          cp vaani-source/app/build/outputs/apk/debug/app-debug.apk \
+            output/Vaani-Link-Test.apk
+
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+
+          with ZipFile(
+              "output/Vyshu-Vaani-Source.zip",
+              "w",
+              ZIP_DEFLATED,
+          ) as archive:
+              for root in ("native-control", "vaani-source"):
+                  for path in Path(root).rglob("*"):
+                      if not path.is_file():
+                          continue
+
+                      if any(
+                          part in {".git", ".gradle", "build"}
+                          for part in path.parts
+                      ):
+                          continue
+
+                      if (
+                          path.name == ".env"
+                          or path.suffix in {".jks", ".keystore"}
+                      ):
+                          continue
+
+                      archive.write(path, str(path))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vyshu-Vaani-Link-Test
+          path: output/
+          retention-days: 7
+          if-no-files-found: error
