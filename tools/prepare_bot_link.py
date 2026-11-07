@@ -710,4 +710,488 @@ private object PairStore {
 
 class VyshuPairActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(s
+        super.onCreate(savedInstanceState)
+
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+
+        val caller = callingPackage
+        val key = intent.getStringExtra("key")
+
+        if (
+            caller !in setOf("com.vyshu.coretest", "com.vyshu.ai") ||
+            !VyshuGate.valid(key)
+        ) {
+            setResult(RESULT_CANCELED)
+            finish()
+            return
+        }
+
+        val uid = try {
+            packageManager.getApplicationInfo(caller!!, 0).uid
+        } catch (_: Exception) {
+            finish()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Connect Vyshu to Vaani?")
+            .setMessage(
+                "Allow $caller to request music status, playback " +
+                    "controls and sleep timers on this phone? " +
+                    "This replaces any previous pairing."
+            )
+            .setPositiveButton("Allow") { _, _ ->
+                try {
+                    PairStore.write(
+                        this,
+                        VyshuGate.pair(uid, key!!)
+                    )
+                    setResult(RESULT_OK)
+                } catch (_: Exception) {
+                    setResult(RESULT_CANCELED)
+                }
+                finish()
+            }
+            .setNeutralButton("Revoke access") { _, _ ->
+                PairStore.revoke(this)
+                setResult(RESULT_CANCELED)
+                finish()
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                finish()
+            }
+            .setOnCancelListener {
+                finish()
+            }
+            .show()
+    }
+}
+
+class VyshuControlService : Service() {
+    private val recent =
+        LinkedHashMap<String, Pair<String, Bundle>>()
+
+    private val inbox = Messenger(
+        Handler(Looper.getMainLooper()) { message ->
+            handle(message)
+            true
+        }
+    )
+
+    override fun onBind(intent: Intent?): IBinder = inbox.binder
+
+    private fun reply(message: Message, data: Bundle) {
+        try {
+            message.replyTo?.send(
+                Message.obtain(null, 1).apply {
+                    this.data = data
+                }
+            )
+        } catch (_: Exception) {
+            // The caller may have left. Never repeat the action.
+        }
+    }
+
+    private fun result(
+        id: String,
+        status: String,
+        detail: String
+    ) = Bundle().apply {
+        putString("id", id)
+        putString("status", status)
+        putString("detail", detail)
+    }
+
+    private fun handle(message: Message) {
+        var id = ""
+
+        try {
+            val data = message.data
+            id = data.getString("id").orEmpty()
+
+            if (id.length !in 1..80 || message.what != 1) {
+                return
+            }
+
+            val gate = PairStore.read(this)
+
+            if (
+                gate == null ||
+                !gate.allows(
+                    message.sendingUid,
+                    data.getString("key")
+                )
+            ) {
+                reply(
+                    message,
+                    result(
+                        id,
+                        "error",
+                        "Not authorised. Pair Vyshu with Vaani."
+                    )
+                )
+                return
+            }
+
+            val age = SystemClock.elapsedRealtime() -
+                data.getLong("issued", -1)
+
+            if (age !in 0L..10_000L) {
+                reply(
+                    message,
+                    result(id, "error", "This request expired.")
+                )
+                return
+            }
+
+            val action = data.getString("action").orEmpty()
+            val query = data.getString("query").orEmpty()
+            val minutes = data.getInt("minutes", 0)
+
+            require(action.length <= 30 && query.length <= 200)
+
+            val fingerprint = JSONObject()
+                .put("action", action)
+                .put("query", query)
+                .put("minutes", minutes)
+                .toString()
+
+            val cacheKey = "${message.sendingUid}:$id"
+
+            recent[cacheKey]?.let { previous ->
+                reply(
+                    message,
+                    if (previous.first == fingerprint) {
+                        previous.second
+                    } else {
+                        result(
+                            id,
+                            "error",
+                            "Request ID was reused with different arguments."
+                        )
+                    }
+                )
+                return
+            }
+
+            val response = execute(id, action, query, minutes)
+
+            recent[cacheKey] = fingerprint to response
+
+            if (recent.size > 128) {
+                recent.remove(recent.keys.first())
+            }
+
+            reply(message, response)
+        } catch (_: Exception) {
+            reply(
+                message,
+                result(
+                    id,
+                    "error",
+                    "Command could not be processed. Check status."
+                )
+            )
+        }
+    }
+
+    private fun execute(
+        id: String,
+        action: String,
+        query: String,
+        minutes: Int
+    ): Bundle {
+        val model = VaaniControl.model()
+            ?: return result(
+                id,
+                "error",
+                "Open Vaani first. Its player is not running."
+            )
+
+        val player = model.player
+
+        when (action) {
+            "status" -> return result(
+                id,
+                "reported",
+                "Track: ${player.currentSong.value?.title ?: "none"}; " +
+                    "playing: ${player.isPlaying.value}; " +
+                    "timer: ${player.sleepTimerRemainingSec.value}s"
+            )
+
+            "pause" -> player.pause()
+
+            "resume" -> {
+                if (player.currentSong.value == null) {
+                    return result(
+                        id,
+                        "error",
+                        "Choose a track in Vaani first."
+                    )
+                }
+                player.resume()
+            }
+
+            "next", "previous" -> {
+                if (model.allSongs.value.isEmpty()) {
+                    return result(
+                        id,
+                        "error",
+                        "Vaani's song list is not loaded."
+                    )
+                }
+
+                if (action == "next") {
+                    model.skipNext()
+                } else {
+                    model.skipPrevious()
+                }
+            }
+
+            "play" -> {
+                if (query.isBlank()) {
+                    return result(
+                        id,
+                        "error",
+                        "Provide a track title."
+                    )
+                }
+
+                val songs = model.allSongs.value
+
+                val exact = songs.filter {
+                    it.title.equals(query, ignoreCase = true)
+                }
+
+                val matches = exact.ifEmpty {
+                    songs.filter {
+                        it.title.contains(query, ignoreCase = true)
+                    }
+                }
+
+                if (matches.size != 1) {
+                    return result(
+                        id,
+                        "error",
+                        if (matches.isEmpty()) {
+                            "No matching track in the loaded library."
+                        } else {
+                            "Several tracks match. Use the exact title."
+                        }
+                    )
+                }
+
+                model.playSong(matches.single())
+            }
+
+            "timer" -> {
+                if (minutes !in 1..180) {
+                    return result(
+                        id,
+                        "error",
+                        "Timer must be 1–180 minutes."
+                    )
+                }
+                player.setSleepTimer(minutes)
+            }
+
+            "cancel_timer" -> player.cancelSleepTimer()
+
+            else -> return result(
+                id,
+                "error",
+                "Unsupported action."
+            )
+        }
+
+        // Playback may prepare asynchronously.
+        // Acknowledging a command is not proof of audible playback.
+        return result(
+            id,
+            "accepted",
+            "$action was passed to Vaani's player. " +
+                "Use status to inspect its reported state."
+        )
+    }
+}
+""",
+
+    "vaani-source/app/src/test/java/com/example/control/VyshuGateTest.kt": r"""
+package com.example.control
+
+import org.junit.Assert.*
+import org.junit.Test
+
+class VyshuGateTest {
+    private val key = "vyshu_v1_" + "A".repeat(43)
+
+    @Test
+    fun pairedCallerCanAuthenticate() {
+        assertTrue(
+            VyshuGate.pair(10001, key).allows(10001, key)
+        )
+    }
+
+    @Test
+    fun anotherAppCannotUseTheSameKey() {
+        assertFalse(
+            VyshuGate.pair(10001, key).allows(10002, key)
+        )
+    }
+
+    @Test
+    fun wrongKeyAndMissingKeyAreRejected() {
+        val gate = VyshuGate.pair(10001, key)
+
+        assertFalse(
+            gate.allows(
+                10001,
+                "vyshu_v1_" + "B".repeat(43)
+            )
+        )
+        assertFalse(gate.allows(10001, null))
+        assertFalse(gate.allows(10001, key + "extra"))
+    }
+
+    @Test
+    fun replacingPairingInvalidatesTheOldKey() {
+        val newKey = "vyshu_v1_" + "C".repeat(43)
+        val gate = VyshuGate.pair(10001, newKey)
+
+        assertFalse(gate.allows(10001, key))
+        assertTrue(gate.allows(10001, newKey))
+    }
+}
+""",
+}
+
+
+def replace_once(text, old, new):
+    if text.count(old) != 1:
+        raise RuntimeError(
+            "Source changed; refusing an unsafe patch: " + old[:70]
+        )
+    return text.replace(old, new, 1)
+
+
+def prepare():
+    root = Path("vaani-source")
+    activity_path = (
+        root / "app/src/main/java/com/example/MainActivity.kt"
+    )
+    gradle_path = root / "app/build.gradle.kts"
+
+    # Check every replacement before writing the generated files.
+    activity = activity_path.read_text(encoding="utf-8")
+
+    activity = replace_once(
+        activity,
+        "import com.example.ui.VaaniMainScreen",
+        "import com.example.control.VaaniControl\n"
+        "import com.example.ui.VaaniMainScreen",
+    )
+
+    activity = replace_once(
+        activity,
+        "super.onCreate(savedInstanceState)",
+        "super.onCreate(savedInstanceState)\n"
+        "    VaaniControl.attach(viewModel)",
+    )
+
+    activity = replace_once(
+        activity,
+        "\n}\n\n@androidx.compose.runtime.Composable",
+        "\n  override fun onDestroy() {\n"
+        "    if (!isChangingConfigurations) "
+        "VaaniControl.detach(viewModel)\n"
+        "    super.onDestroy()\n"
+        "  }\n"
+        "}\n\n@androidx.compose.runtime.Composable",
+    )
+
+    gradle = replace_once(
+        gradle_path.read_text(encoding="utf-8"),
+        'applicationId = "com.aistudio.vaani.vzqk"',
+        'applicationId = "com.aistudio.vaani.vzqk.vyshutest"',
+    )
+
+    ns = "{http://schemas.android.com/apk/res/android}"
+    ET.register_namespace("android", ns[1:-1])
+
+    manifest_path = root / "app/src/main/AndroidManifest.xml"
+    manifest = ET.parse(manifest_path)
+    application = manifest.getroot().find("application")
+
+    if application is None:
+        raise RuntimeError("Vaani application element not found")
+
+    application.set(ns + "label", "Vaani Link Test")
+
+    for item in application.findall("activity"):
+        item.set(ns + "label", "Vaani Link Test")
+
+    components = [
+        ("activity", "com.example.control.VyshuPairActivity"),
+        ("service", "com.example.control.VyshuControlService"),
+    ]
+
+    for tag, name in components:
+        if any(
+            item.get(ns + "name") == name
+            for item in application
+        ):
+            raise RuntimeError(
+                "Adapter already exists; use a clean pinned checkout"
+            )
+
+        attributes = {
+            ns + "name": name,
+            ns + "exported": "true",
+        }
+
+        if tag == "activity":
+            attributes[ns + "excludeFromRecents"] = "true"
+
+        ET.SubElement(application, tag, attributes)
+
+    queries = manifest.getroot().find("queries")
+
+    if queries is None:
+        queries = ET.SubElement(manifest.getroot(), "queries")
+
+    for package in ["com.vyshu.coretest", "com.vyshu.ai"]:
+        ET.SubElement(
+            queries,
+            "package",
+            {ns + "name": package},
+        )
+
+    for name, content in FILES.items():
+        path = Path(name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content.strip() + "\n", encoding="utf-8")
+
+    activity_path.write_text(activity, encoding="utf-8")
+    gradle_path.write_text(gradle, encoding="utf-8")
+
+    manifest.write(
+        manifest_path,
+        encoding="utf-8",
+        xml_declaration=True,
+    )
+
+    # The integration test must not use a paid AI-provider key.
+    for name in (".env", ".env.example"):
+        (root / name).write_text(
+            "GEMINI_API_KEY=\n",
+            encoding="utf-8",
+        )
+
+    print(
+        "Prepared native Vyshu and Vaani test sources. "
+        "No API secrets generated on CI."
+    )
+
+
+if __name__ == "__main__":
+    prepare()
