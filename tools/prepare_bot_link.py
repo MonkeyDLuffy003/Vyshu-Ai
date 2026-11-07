@@ -451,3 +451,263 @@ class BotLinkActivity : Activity() {
 
             if (!bound) {
                 finishRequest("Vaani control service is unavailable.")
+            } else {
+                output.text = "Waiting for Vaani…"
+                main.postDelayed(timeout, 5000)
+            }
+        } catch (_: Exception) {
+            finishRequest("Unable to bind to Vaani.")
+        }
+    }
+
+    private fun finishRequest(text: String) {
+        main.removeCallbacks(timeout)
+        pendingId = null
+
+        if (bound) {
+            connection?.let {
+                runCatching { unbindService(it) }
+            }
+        }
+
+        bound = false
+        connection = null
+
+        if (::output.isInitialized) {
+            output.text = text
+        }
+    }
+
+    override fun onDestroy() {
+        finishRequest("Closed.")
+        super.onDestroy()
+    }
+}
+""",
+
+    "native-control/app/src/main/java/com/vyshu/botlink/WebBotClient.kt": r"""
+package com.vyshu.botlink
+
+import android.os.Looper
+import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.net.URL
+import java.util.UUID
+import javax.net.ssl.HttpsURLConnection
+
+// Use an endpoint saved in your bot settings, never an AI-generated URL.
+// The receiving web app must implement this command protocol.
+class WebBotClient(
+    private val endpoint: URL,
+    private val key: String
+) {
+    init {
+        require(
+            endpoint.protocol == "https" &&
+                endpoint.userInfo == null &&
+                endpoint.ref == null &&
+                endpoint.query == null
+        )
+        require(key.matches(Regex("vyshu_v1_[A-Za-z0-9_-]{43}")))
+    }
+
+    // Call on a worker thread. Do not automatically retry commands.
+    fun execute(action: String, args: JSONObject): JSONObject {
+        check(Looper.myLooper() != Looper.getMainLooper())
+        require(action.matches(Regex("[a-z_]{1,40}")))
+
+        val id = UUID.randomUUID().toString()
+
+        val body = JSONObject()
+            .put("id", id)
+            .put("action", action)
+            .put("args", args)
+            .toString()
+            .toByteArray(Charsets.UTF_8)
+
+        require(body.size <= 16_384)
+
+        val connection =
+            endpoint.openConnection() as HttpsURLConnection
+
+        try {
+            connection.instanceFollowRedirects = false
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 8000
+            connection.readTimeout = 10000
+            connection.doOutput = true
+
+            connection.setRequestProperty(
+                "Authorization",
+                "Bearer $key"
+            )
+            connection.setRequestProperty(
+                "Content-Type",
+                "application/json"
+            )
+            connection.setFixedLengthStreamingMode(body.size)
+
+            connection.outputStream.use {
+                it.write(body)
+            }
+
+            val status = connection.responseCode
+            check(status in 200..299) {
+                "Bot returned HTTP $status"
+            }
+
+            val output = ByteArrayOutputStream()
+
+            connection.inputStream.use { stream ->
+                val buffer = ByteArray(4096)
+
+                while (true) {
+                    val read = stream.read(buffer)
+                    if (read == -1) break
+
+                    check(output.size() + read <= 65_536) {
+                        "Bot response too large"
+                    }
+
+                    output.write(buffer, 0, read)
+                }
+            }
+
+            val reply = JSONObject(output.toString("UTF-8"))
+
+            check(reply.getString("id") == id) {
+                "Response ID did not match"
+            }
+
+            check(
+                reply.getString("status") in
+                    setOf("accepted", "completed", "error")
+            )
+
+            return reply
+        } finally {
+            connection.disconnect()
+        }
+    }
+}
+""",
+
+    "vaani-source/app/src/main/java/com/example/control/VyshuGate.kt": r"""
+package com.example.control
+
+import java.security.MessageDigest
+
+class VyshuGate(
+    val uid: Int,
+    val digest: ByteArray
+) {
+    init {
+        require(uid > 0 && digest.size == 32)
+    }
+
+    fun allows(callerUid: Int, key: String?): Boolean =
+        callerUid == uid &&
+            valid(key) &&
+            MessageDigest.isEqual(digest, hash(key!!))
+
+    companion object {
+        fun valid(key: String?): Boolean =
+            key?.matches(
+                Regex("vyshu_v1_[A-Za-z0-9_-]{43}")
+            ) == true
+
+        fun hash(key: String): ByteArray =
+            MessageDigest.getInstance("SHA-256").digest(
+                key.toByteArray(Charsets.UTF_8)
+            )
+
+        fun pair(uid: Int, key: String): VyshuGate {
+            require(valid(key))
+            return VyshuGate(uid, hash(key))
+        }
+    }
+}
+""",
+
+    "vaani-source/app/src/main/java/com/example/control/VyshuControl.kt": r"""
+package com.example.control
+
+import android.app.Activity
+import android.app.AlertDialog
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.os.*
+import android.util.AtomicFile
+import android.util.Base64
+import android.view.WindowManager
+import com.example.ui.VaaniViewModel
+import org.json.JSONObject
+import java.io.File
+import java.lang.ref.WeakReference
+
+object VaaniControl {
+    private var current = WeakReference<VaaniViewModel>(null)
+
+    fun attach(model: VaaniViewModel) {
+        current = WeakReference(model)
+    }
+
+    fun detach(model: VaaniViewModel) {
+        if (current.get() === model) {
+            current.clear()
+        }
+    }
+
+    fun model(): VaaniViewModel? = current.get()
+}
+
+private object PairStore {
+    private fun file(context: Context) =
+        AtomicFile(
+            File(context.noBackupFilesDir, "vyshu_pair_v1.json")
+        )
+
+    fun read(context: Context): VyshuGate? = try {
+        val json = JSONObject(
+            String(file(context).readFully(), Charsets.UTF_8)
+        )
+
+        VyshuGate(
+            json.getInt("uid"),
+            Base64.decode(json.getString("hash"), Base64.NO_WRAP)
+        )
+    } catch (_: Exception) {
+        null
+    }
+
+    fun write(context: Context, gate: VyshuGate) {
+        val record = JSONObject()
+            .put("uid", gate.uid)
+            .put(
+                "hash",
+                Base64.encodeToString(gate.digest, Base64.NO_WRAP)
+            )
+            .toString()
+            .toByteArray(Charsets.UTF_8)
+
+        val target = file(context)
+        val stream = target.startWrite()
+
+        try {
+            stream.write(record)
+            target.finishWrite(stream)
+        } catch (e: Exception) {
+            target.failWrite(stream)
+            throw e
+        }
+    }
+
+    fun revoke(context: Context) {
+        file(context).delete()
+    }
+}
+
+class VyshuPairActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(s
